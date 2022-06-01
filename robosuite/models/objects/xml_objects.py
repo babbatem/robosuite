@@ -328,6 +328,40 @@ class DrawerObject(MujocoXMLObject):
         dic.update({"handle": self.naming_prefix + "handle"})
         return dic
 
-        
+class WheelObject(MujocoXMLObject):
+    """
+    Wheel on Table
+
+    Args:
+    """
+
+    def __init__(self, name):
+        xml_path = "objects/wheel.xml"
+        super().__init__(
+            xml_path_completion(xml_path), name=name, joints=None, obj_type="all", duplicate_collision_geoms=True
+        )
+
+        # Set relevant body names
+        self.revolute_joint = self.naming_prefix + "revolute"
+        self.fixed_joint = self.naming_prefix + "fixed"
+
+        # will be set later
+        self.crank = self.naming_prefix + "crank"
+        self.crank_support = self.naming_prefix + "crank_support"
+        self.handle = self.naming_prefix + "handle"
+        self.table = self.naming_prefix + "table"
+
+    @property
+    def important_sites(self):
+        """
+        Returns:
+            dict: In addition to any default sites for this object, also provides the following entries
+
+                :`'handle'`: Name of door handle location site
+        """
+        # Get dict from super call and add to it
+        dic = super().important_sites
+        dic.update({"handle": self.naming_prefix + "handle"})
+        return dic  
 
 
