@@ -127,7 +127,7 @@ class LeverCIP(SingleArmEnv, CIP):
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
-        self.table_offset = (-0.6, -1.0, 0.5)
+        self.table_offset = (-0.6, -0.5, 0.5)
 
         # reward configuration
         self.reward_scale = reward_scale
@@ -380,7 +380,7 @@ class LeverCIP(SingleArmEnv, CIP):
             bool: True if door has been opened
         """
         hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-        return hinge_qpos > 0.3
+        return hinge_qpos > 1.57
 
     def visualize(self, vis_settings):
         """
