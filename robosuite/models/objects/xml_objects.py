@@ -342,14 +342,9 @@ class WheelObject(MujocoXMLObject):
         )
 
         # Set relevant body names
-        self.revolute_joint = self.naming_prefix + "revolute"
-        self.fixed_joint = self.naming_prefix + "fixed"
+        self.wheel_body = self.naming_prefix + "link_1"
+        self.wheel_joint = self.naming_prefix + "joint_1"
 
-        # will be set later
-        self.crank = self.naming_prefix + "crank"
-        self.crank_support = self.naming_prefix + "crank_support"
-        self.handle = self.naming_prefix + "handle"
-        self.table = self.naming_prefix + "table"
 
     @property
     def important_sites(self):

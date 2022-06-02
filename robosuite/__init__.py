@@ -13,6 +13,7 @@ from robosuite.environments.manipulation.two_arm_handover import TwoArmHandover
 
 from robosuite.environments.manipulation.door_cip import DoorCIP
 from robosuite.environments.manipulation.drawer_cip import DrawerCIP
+from robosuite.environments.manipulation.wheel_cip import WheelCIP
 
 from robosuite.environments import ALL_ENVIRONMENTS
 from robosuite.controllers import ALL_CONTROLLERS, load_controller_config
