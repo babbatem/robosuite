@@ -37,6 +37,7 @@ class DoorCIP(Door, CIP):
                  camera_heights=256,
                  camera_widths=256,
                  camera_depths=False,
+                 camera_segmentations=None,  # {None, instance, class, element}
                  task_config=None,
                  ee_fixed_to_handle=False):
 
@@ -67,7 +68,8 @@ class DoorCIP(Door, CIP):
                          camera_names,
                          camera_heights,
                          camera_widths,
-                         camera_depths)
+                         camera_depths,
+                         camera_segmentations=camera_segmentations)  # {None, instance, class, element}
 
     def _reset_internal(self):
 
