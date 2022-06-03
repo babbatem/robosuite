@@ -17,7 +17,8 @@ from .xml_objects import (
     PlateWithHoleObject,
     DoorObject,
     DrawerObject, 
-    LeverObject
+    LeverObject, 
+    SlideObject
 )
 from .primitive import *
 from .composite import *

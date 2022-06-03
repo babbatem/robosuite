@@ -1,0 +1,24 @@
+<mujoco model="slide_model">
+    <compiler angle="radian" />
+    <worldbody>
+    <body>
+        <body name="object">    
+            <body name="base" pos="0 0 .0125">
+                <geom name="b1" type="box" size=".05 .2 .0125" pos="0 0 0" rgba="0 0 1 1" group="0"/>
+                <!-- <geom name="s1" type="box" size=".025 .2 .025" pos=" .025 0 .075" rgba="0 0 1 1" group="0"/>
+                <geom name="s2" type="box" size=".025 .2 .025" pos="-.025 0 .075" rgba="0 0 1 1" group="0"/> -->
+            </body>
+            
+            <body name="link_1" pos="0 0 .0575">
+                <joint name="joint_1" pos="0 0 0" axis="0 -1 0" type="slide" limited="true" range="0 0.6" damping="1" frictionloss="1"/>
+                <geom name="slide" type="box" size=".025 .05 .0125" pos="0 0 0" rgba="0 1 0 1" group="0"/>
+                <geom name="grip" type="box" size=".005 .005 .075" pos="0 0 .025" rgba="0 1 0 1" group="0"/>
+                <site name="handle" pos="0 0 .3" size="0.02" rgba="0 0 1 1" />
+            </body>
+        </body>
+    <site name="bottom_site" pos="0 0 -0.3" rgba="0 0 0 0" size="0.005"/>
+    <site name="top_site" pos="0 0 0.3" rgba="0 0 0 0" size="0.005"/>
+    <site name="horizontal_radius_site" pos="0.3 0 0" rgba="0 0 0 0" size="0.1"/>
+    </body>
+    </worldbody>
+</mujoco>
