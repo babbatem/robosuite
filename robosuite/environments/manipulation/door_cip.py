@@ -6,6 +6,11 @@ import robosuite.utils.transform_utils as T
 
 from robosuite.environments.manipulation.cip_env import CIP
 
+import os
+
+import pickle
+import random
+
 
 class DoorCIP(Door, CIP):
     """docstring for DoorCIP"""
@@ -76,8 +81,16 @@ class DoorCIP(Door, CIP):
         super()._reset_internal()
         self.sim.forward()
 
+        task = self.__class__.__name__
+        #TODO should get this path in a more systematic way
+        heuristic_grasps_path = "./grasps/"+task+".pkl"
+        heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
+        
+        #TODO replace random sampling with making sure grasp is good
+        sampled_pose = random.choice(heuristic_grasps)
+
         if self.ee_fixed_to_handle:
-            self.set_grasp(self.door_handle_site_id, self.door.root_body, type='top', wide=False)
+            self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=False)
 
     def reward(self, action=None):
         """
