@@ -18,7 +18,7 @@ class CIP(object):
         ik_config.pop("input_min", None)
         ik_config.pop("output_max", None)
         ik_config.pop("output_min", None)
-        print(ik_config)
+
         self.IK = controller_factory("IK_POSE", ik_config)
 
     def set_grasp_heuristic(self, target_matrix, root_body, type="top", wide=False):
