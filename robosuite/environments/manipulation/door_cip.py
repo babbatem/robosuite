@@ -79,7 +79,6 @@ class DoorCIP(Door, CIP):
     def _reset_internal(self):
 
         super()._reset_internal()
-        self.sim.forward()
 
         task = self.__class__.__name__
         #TODO should get this path in a more systematic way
@@ -88,9 +87,11 @@ class DoorCIP(Door, CIP):
         
         #TODO replace random sampling with making sure grasp is good
         sampled_pose = random.choice(heuristic_grasps)
-
-        if self.ee_fixed_to_handle:
-            self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=False)
+        self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+        self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+        self.sim.forward()
+        self.robots[0].controller.update(force=True)
+        self.robots[0].controller.reset_goal()
 
     def reward(self, action=None):
         """
