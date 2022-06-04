@@ -2,7 +2,6 @@ import numpy as np
 import robosuite.utils.transform_utils as T
 from robosuite.controllers import controller_factory
 
-
 class CIP(object):
     """
     enables functionality for resetting with grasping, safety, etc. 
@@ -19,7 +18,27 @@ class CIP(object):
         ik_config.pop("input_min", None)
         ik_config.pop("output_max", None)
         ik_config.pop("output_min", None)
+        print(ik_config)
         self.IK = controller_factory("IK_POSE", ik_config)
+
+    def set_grasp_heuristic(self, target_matrix, root_body, type="top", wide=False):
+        self._setup_ik()
+
+        target_pos = target_matrix[:3,3]
+        target_ori_mat = target_matrix[:3,:3]
+
+        # ik 
+        qpos = self.IK.ik(target_pos, target_ori_mat)
+
+        # update sim 
+        self.sim.data.qpos[:7] = qpos
+        self.robots[0].init_qpos = qpos
+        self.robots[0].initialization_noise['magnitude'] = 0.0
+
+        # override initial gripper qpos for wide grasp 
+        if wide:
+            self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+
 
     def set_grasp(self, site_id, root_body, type="top", wide=False):
 
@@ -63,4 +82,7 @@ class CIP(object):
         # override initial gripper qpos for wide grasp 
         if wide:
             self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+
+
+
 
