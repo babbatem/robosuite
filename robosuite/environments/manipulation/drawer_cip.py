@@ -13,6 +13,8 @@ from robosuite.utils.mjcf_utils import array_to_string, string_to_array, xml_pat
 
 from robosuite.environments.manipulation.cip_env import CIP
 
+import pickle
+import random
 
 class DrawerCIP(SingleArmEnv, CIP):
     """
@@ -392,25 +394,31 @@ class DrawerCIP(SingleArmEnv, CIP):
         return observables
 
     def _reset_internal(self):
-        """
-        Resets simulation internal configurations.
-        """
         super()._reset_internal()
 
-        # Reset all object positions using initializer sampler if we're not directly loading from an xml
-        if not self.deterministic_reset:
+        # Sample from the placement initializer for all objects
+        object_placements = self.placement_initializer.sample()
 
-            # Sample from the placement initializer for all objects
-            object_placements = self.placement_initializer.sample()
-
-            # We know we're only setting a single object (the drawer), so specifically set its pose
-            drawer_pos, drawer_quat, _ = object_placements[self.drawer.name]
-            drawer_body_id = self.sim.model.body_name2id(self.drawer.root_body)
-            self.sim.model.body_pos[drawer_body_id] = drawer_pos
-            self.sim.model.body_quat[drawer_body_id] = drawer_quat
-
+        # We know we're only setting a single object (the drawer), so specifically set its pose
+        drawer_pos, drawer_quat, _ = object_placements[self.drawer.name]
+        drawer_body_id = self.sim.model.body_name2id(self.drawer.root_body)
+        self.sim.model.body_pos[drawer_body_id] = drawer_pos
+        self.sim.model.body_quat[drawer_body_id] = drawer_quat
         if self.ee_fixed_to_handle:
-            self.set_grasp(self.drawer_handle_site_id, self.drawer.root_body, type='side', wide=True)
+            task = self.__class__.__name__
+            #TODO should get this path in a more systematic way
+            heuristic_grasps_path = "./grasps/"+task+".pkl"
+            heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
+            
+            #TODO replace random sampling with making sure grasp is good
+            sampled_pose = random.choice(heuristic_grasps)
+            self.set_grasp_heuristic(sampled_pose, self.drawer.root_body, type='top', wide=True)
+            self.set_grasp_heuristic(sampled_pose, self.drawer.root_body, type='top', wide=True)
+            self.sim.forward()
+            self.robots[0].controller.update(force=True)
+            self.robots[0].controller.reset_goal()
+        else:
+            self.sim.forward()
 
     def _check_success(self):
         """

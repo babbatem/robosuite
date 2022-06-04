@@ -79,19 +79,21 @@ class DoorCIP(Door, CIP):
     def _reset_internal(self):
 
         super()._reset_internal()
-
-        task = self.__class__.__name__
-        #TODO should get this path in a more systematic way
-        heuristic_grasps_path = "./grasps/"+task+".pkl"
-        heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
-        
-        #TODO replace random sampling with making sure grasp is good
-        sampled_pose = random.choice(heuristic_grasps)
-        self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
-        self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
-        self.sim.forward()
-        self.robots[0].controller.update(force=True)
-        self.robots[0].controller.reset_goal()
+        if self.ee_fixed_to_handle:
+            task = self.__class__.__name__
+            #TODO should get this path in a more systematic way
+            heuristic_grasps_path = "./grasps/"+task+".pkl"
+            heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
+            
+            #TODO replace random sampling with making sure grasp is good
+            sampled_pose = random.choice(heuristic_grasps)
+            self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+            self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+            self.sim.forward()
+            self.robots[0].controller.update(force=True)
+            self.robots[0].controller.reset_goal()
+        else:
+            self.sim.forward()
 
     def reward(self, action=None):
         """
