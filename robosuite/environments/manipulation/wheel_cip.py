@@ -237,7 +237,10 @@ class WheelCIP(SingleArmEnv, CIP):
         self.robots[0].robot_model.set_base_xpos(xpos)
 
         # load model for table top workspace
-        mujoco_arena = TableArena(xml_path_completion("arenas/empty_arena.xml"))
+        mujoco_arena = TableArena(
+            table_full_size=self.table_full_size,
+            table_offset=self.table_offset,
+        )
 
         # Arena always gets set to zero origin
         mujoco_arena.set_origin([0, 0, 0])

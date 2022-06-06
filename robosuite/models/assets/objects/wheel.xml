@@ -1,7 +1,6 @@
 <mujoco model="wheel_model">
     <compiler angle="radian" />
     <worldbody>
-    <body>
     <body name="object">    
     <body name="link_1" pos="0 0 0.05">
         <geom name="base" type="box" size=".1 .1 .05" pos="0 0 0" rgba="0 0 1 1" group="0"/>
