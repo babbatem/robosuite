@@ -342,8 +342,9 @@ class WheelObject(MujocoXMLObject):
         )
 
         # Set relevant body names
-        self.wheel_body = self.naming_prefix + "link_1"
-        self.wheel_joint = self.naming_prefix + "joint_1"
+        self.link_1 = self.naming_prefix + "link_1"
+        self.joint_1 = self.naming_prefix + "joint_1"
+        self.link_2 = self.naming_prefix + "link_2"
 
 
     @property

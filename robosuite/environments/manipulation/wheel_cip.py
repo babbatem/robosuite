@@ -288,9 +288,9 @@ class WheelCIP(SingleArmEnv, CIP):
 
         # Additional object references from this env
         self.object_body_ids = dict()
-        self.object_body_ids["wheel"] = self.sim.model.body_name2id(self.wheel.wheel_body)
+        self.object_body_ids["wheel"] = self.sim.model.body_name2id(self.wheel.link_1)
         self.wheel_handle_site_id = self.sim.model.site_name2id(self.wheel.important_sites["handle"])
-        self.hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.lever.joints[0])
+        self.hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.wheel.joints[0])
 
     def _setup_observables(self):
         """
