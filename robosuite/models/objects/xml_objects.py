@@ -298,6 +298,64 @@ class DoorObject(MujocoXMLObject):
         dic.update({"handle": self.naming_prefix + "handle"})
         return dic
 
+class LeverObject(MujocoXMLObject):
+    """
+    Lever
+    
+    Args: 
+    """
+
+    def __init__(self, name): 
+        xml_path = "objects/lever.xml"
+        print(xml_path_completion(xml_path))
+        super().__init__(
+            xml_path_completion(xml_path), name=name, joints=None, obj_type="all", duplicate_collision_geoms=True
+        )
+        self.lever_body = self.naming_prefix + "link_1"
+        self.lever_joint = self.naming_prefix + "joint_1"
+
+    @property
+    def important_sites(self):
+        """
+	Returns:
+            dict: In addition to any default sites for this object, also provid$
+
+                :`'handle'`: Name of door handle location site
+        """
+	# Get dict from super call and add to it
+        dic = super().important_sites
+        dic.update({"handle": self.naming_prefix + "handle"})
+        return dic
+
+class SlideObject(MujocoXMLObject):
+    """
+    Slide
+    
+    Args: 
+    """
+
+    def __init__(self, name): 
+        xml_path = "objects/slide.xml"
+        print(xml_path_completion(xml_path))
+        super().__init__(
+            xml_path_completion(xml_path), name=name, joints=None, obj_type="all", duplicate_collision_geoms=True
+        )
+        self.slide_body = self.naming_prefix + "link_1"
+        self.slide_joint = self.naming_prefix + "joint_1"
+
+    @property
+    def important_sites(self):
+        """
+    Returns:
+            dict: In addition to any default sites for this object, also provid$
+
+                :`'handle'`: Name of door handle location site
+        """
+    # Get dict from super call and add to it
+        dic = super().important_sites
+        dic.update({"handle": self.naming_prefix + "handle"})
+        return dic
+
 class DrawerObject(MujocoXMLObject):
     """
     Door with handle (used in Drawer)
