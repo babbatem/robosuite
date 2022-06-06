@@ -250,7 +250,7 @@ class WheelCIP(SingleArmEnv, CIP):
         )
 
         # initialize objects of interest
-        self.lever = WheelObject(
+        self.wheel = WheelObject(
             name="Wheel",
         )
 
