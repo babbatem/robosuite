@@ -240,7 +240,8 @@ class Robot(object):
             zip(self.sim.data.qpos[self._ref_joint_pos_indexes], self.sim.model.jnt_range[self._ref_joint_indexes])
         ):
             if q_limits[0] != q_limits[1] and not (q_limits[0] + tolerance < q < q_limits[1] - tolerance):
-                print("Joint limit reached in joint " + str(qidx))
+                #print("Joint limit reached in joint " + str(qidx))
+                print("Joint min is {min} and max is {max}, joint {qidx} violated with {j}".format(qidx=qidx, min=q_limits[0], max=q_limits[1], j=q))
                 return True
         return False
 
