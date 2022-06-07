@@ -5,8 +5,6 @@
     <body name="object">    
     <body name="base" pos="0 0 -.05">
         <geom name="base" type="box" size=".1 .1 .05" pos="0 0 0" rgba="0 0 1 1" group="0"/>
-        <geom name="s1" type="box" size=".025 .075 .025" pos=" .04 0 .075" rgba="0 0 1 1" group="0"/>
-        <geom name="s2" type="box" size=".025 .075 .025" pos="-.04 0 .075" rgba="0 0 1 1" group="0"/>
     </body>
     
     <body name="link_1" pos="0 .15 .025">
@@ -14,14 +12,12 @@
                 group="0" 
         />
 
-          <geom name="wheel" rgba="1 0 0 1" size=".015 .075 .015"  pos="0 .075 0" euler="-1.57 0 0" type="cylinder" margin="0.001"
+        <geom name="wheel" rgba="1 0 0 1" size=".015 .075 .015"  pos="0 .075 0" euler="-1.57 0 0" type="cylinder" margin="0.001"
                 group="0" 
-            />
-
-          <joint type="hinge" range="0 1.75" axis="1 0 0" name="joint_1" pos="0 -.15 0"  armature="0"/>
-          <joint type="hinge" range="0 1.75" axis="1 0 0" name="joint_2" pos="0 .75 0"  armature="0"/>
-          <site name="handle" pos="0 0 .3" size="0.02" rgba="0 0 1 1" />    
-          <site name="holder" pos="0 0.15 .02" size="0.02" rgba="0 0 1 1" />        
+        />
+        
+        <joint name="hinge" type="hinge" pos="0 0 0" axis="1 0 0" damping="0.1" limited="true" range="-.5 .5" />
+        <site name="handle" pos=".02 0.15 0" size="0.02" rgba="0 0 1 1" />  
         </body>
     </body>
     <site name="bottom_site" pos="0 0 -0.3" rgba="0 0 0 0" size="0.005"/>
