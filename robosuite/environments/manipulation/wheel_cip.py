@@ -9,9 +9,10 @@ from robosuite.models.tasks import ManipulationTask
 from robosuite.utils.observables import Observable, sensor
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.utils.mjcf_utils import array_to_string, string_to_array, xml_path_completion
-
 from robosuite.environments.manipulation.cip_env import CIP
 
+import pickle
+import random
 
 class WheelCIP(SingleArmEnv, CIP):
     """
@@ -129,7 +130,7 @@ class WheelCIP(SingleArmEnv, CIP):
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
-        self.table_offset = (-0.6, -1.0, 0.5)
+        self.table_offset = (-0.6, -0.5, 1.0)
 
         # reward configuration
         self.reward_scale = reward_scale
@@ -226,6 +227,7 @@ class WheelCIP(SingleArmEnv, CIP):
         info["success"] = self._check_success()
         return reward, done, info
 
+
     def _load_model(self):
         """
         Loads an xml model, puts it in self.model
@@ -255,7 +257,7 @@ class WheelCIP(SingleArmEnv, CIP):
         # initialize objects of interest
         self.wheel = WheelObject(
             name="Wheel",
-        )
+            )
 
         # Create placement initializer
         if self.placement_initializer is not None:
@@ -335,11 +337,12 @@ class WheelCIP(SingleArmEnv, CIP):
                 )
 
             @sensor(modality=modality)
-            def slider_qpos(obs_cache):
-                return np.array([self.sim.data.qpos[self.slider_qpos_addr]])
+            def hinge_qpos(obs_cache):
+                return np.array([self.sim.data.qpos[self.hinge_qpos_addr]])
 
-            sensors = [wheel_pos, handle_pos, wheel_to_eef_pos, handle_to_eef_pos, slider_qpos]
+            sensors = [wheel_pos, handle_pos, wheel_to_eef_pos, handle_to_eef_pos, hinge_qpos]
             names = [s.__name__ for s in sensors]
+
 
             # Create observables
             for name, s in zip(names, sensors):
@@ -352,38 +355,45 @@ class WheelCIP(SingleArmEnv, CIP):
         return observables
 
     def _reset_internal(self):
-        """
-        Resets simulation internal configurations.
-        """
         super()._reset_internal()
 
-        # Reset all object positions using initializer sampler if we're not directly loading from an xml
-        if not self.deterministic_reset:
+        # Sample from the placement initializer for all objects
+        object_placements = self.placement_initializer.sample()
 
-            # Sample from the placement initializer for all objects
-            object_placements = self.placement_initializer.sample()
-
-            # We know we're only setting a single object (the wheel), so specifically set its pose
-            wheel_pos, wheel_quat, _ = object_placements[self.wheel.name]
-            wheel_body_id = self.sim.model.body_name2id(self.wheel.root_body)
-            self.sim.model.body_pos[wheel_body_id] = wheel_pos
-            self.sim.model.body_quat[wheel_body_id] = wheel_quat
-
+        # We know we're only setting a single object (the door), so specifically set its pose
+        wheel_pos, wheel_quat, _ = object_placements[self.wheel.name]
+        wheel_body_id = self.sim.model.body_name2id(self.wheel.root_body)
+        self.sim.model.body_pos[wheel_body_id] = wheel_pos
+        self.sim.model.body_quat[wheel_body_id] = wheel_quat
         if self.ee_fixed_to_handle:
-            self.set_grasp(self.wheel_handle_site_id, self.wheel.root_body, type='side', wide=True)
+            task = self.__class__.__name__
+            #TODO should get this path in a more systematic way
+            heuristic_grasps_path = "./grasps/"+task+".pkl"
+            heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
+            
+            #TODO replace random sampling with making sure grasp is good
+            sampled_pose = random.choice(heuristic_grasps)
+            self.set_grasp_heuristic(sampled_pose, self.wheel.root_body, type='top', wide=True)
+            self.set_grasp_heuristic(sampled_pose, self.wheel.root_body, type='top', wide=True)
+            self.sim.forward()
+            self.robots[0].controller.update(force=True)
+            self.robots[0].controller.reset_goal()
+        else:
+            self.sim.forward()
+
 
     def _check_success(self):
         """
-        Check if drawer has been opened.
+        Check if door has been opened.
         Returns:
-            bool: True if drawer has been opened
+            bool: True if door has been opened
         """
         hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-        return hinge_qpos > 0.3
+        return hinge_qpos > 1.57
 
     def visualize(self, vis_settings):
         """
-        In addition to super call, visualize gripper site proportional to the distance to the drawer handle.
+        In addition to super call, visualize gripper site proportional to the distance to the door handle.
         Args:
             vis_settings (dict): Visualization keywords mapped to T/F, determining whether that specific
                 component should be visualized. Should have "grippers" keyword as well as any other relevant
@@ -392,7 +402,7 @@ class WheelCIP(SingleArmEnv, CIP):
         # Run superclass method first
         super().visualize(vis_settings=vis_settings)
 
-        # Color the gripper visualization site according to its distance to the drawer handle
+        # Color the gripper visualization site according to its distance to the door handle
         if vis_settings["grippers"]:
             self._visualize_gripper_to_target(
                 gripper=self.robots[0].gripper, target=self.wheel.important_sites["handle"], target_type="site"
@@ -401,7 +411,7 @@ class WheelCIP(SingleArmEnv, CIP):
     @property
     def _handle_xpos(self):
         """
-        Grabs the position of the drawer handle handle.
+        Grabs the position of the door handle handle.
         Returns:
             np.array: Door handle (x,y,z)
         """
@@ -410,7 +420,7 @@ class WheelCIP(SingleArmEnv, CIP):
     @property
     def _gripper_to_handle(self):
         """
-        Calculates distance from the gripper to the drawer handle.
+        Calculates distance from the gripper to the door handle.
         Returns:
             np.array: (x,y,z) distance between handle and eef
         """
