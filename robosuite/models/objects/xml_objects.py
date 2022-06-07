@@ -307,7 +307,7 @@ class LeverObject(MujocoXMLObject):
 
     def __init__(self, name): 
         xml_path = "objects/lever.xml"
-        print(xml_path_completion(xml_path))
+        #print(xml_path_completion(xml_path))
         super().__init__(
             xml_path_completion(xml_path), name=name, joints=None, obj_type="all", duplicate_collision_geoms=True
         )
@@ -336,7 +336,7 @@ class SlideObject(MujocoXMLObject):
 
     def __init__(self, name): 
         xml_path = "objects/slide.xml"
-        print(xml_path_completion(xml_path))
+        #print(xml_path_completion(xml_path))
         super().__init__(
             xml_path_completion(xml_path), name=name, joints=None, obj_type="all", duplicate_collision_geoms=True
         )
