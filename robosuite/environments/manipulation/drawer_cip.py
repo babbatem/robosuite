@@ -242,7 +242,10 @@ class DrawerCIP(SingleArmEnv, CIP):
             # Add reaching component
             dist = np.linalg.norm(self._gripper_to_handle)
             reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
-            reward += reaching_reward
+            #reward += reaching_reward
+
+            hinge_qpos = self.sim.data.qpos[self.slider_qpos_addr]
+            reward += hinge_qpos
 
         # Scale reward if requested
         if self.reward_scale is not None:
