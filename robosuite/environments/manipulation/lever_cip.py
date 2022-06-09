@@ -143,6 +143,7 @@ class LeverCIP(SingleArmEnv, CIP):
         self.placement_initializer = placement_initializer
         self.ee_fixed_to_handle = ee_fixed_to_handle
 
+
         super().__init__(
             robots=robots,
             env_configuration=env_configuration,
@@ -190,6 +191,7 @@ class LeverCIP(SingleArmEnv, CIP):
         """
         reward = 0.0
 
+
         # sparse completion reward
         if self._check_success():
             reward = 1.0
@@ -199,7 +201,11 @@ class LeverCIP(SingleArmEnv, CIP):
             # Add reaching component
             dist = np.linalg.norm(self._gripper_to_handle)
             reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
-            reward += reaching_reward
+            #reward += reaching_reward
+
+            # add hinge qpos component 
+            hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
+            reward += hinge_qpos
 
         # Scale reward if requested
         if self.reward_scale is not None:
