@@ -144,10 +144,15 @@ class SlideCIP(SingleArmEnv, CIP):
         self.ee_fixed_to_handle = ee_fixed_to_handle
 
         task = self.__class__.__name__
+        #TODO should get this path in a more systematic way
         heuristic_grasps_path = "./grasps/"+task+".pkl"
         self.heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
-        self.grasp_scores = np.ones((len(self.heuristic_grasps)))
-        self.cur_grasp = None
+
+        grasp_scores_path = "./grasps/scores/"+task+".pkl"
+        self.grasp_scores = pickle.load(open(grasp_scores_path,"rb"))
+        grasp_times_path = "./grasps/times/"+task+".pkl"
+        self.grasp_times_selected = pickle.load(open(grasp_times_path,"rb"))
+        self.cur_grasp = np.random.randint(0, len(self.heuristic_grasps))
 
         super().__init__(
             robots=robots,
@@ -367,6 +372,11 @@ class SlideCIP(SingleArmEnv, CIP):
         return observables
 
 
+    def _UCB_grasp_sample(self, c=.25):
+        uncertainty = c * np.sqrt(np.log(np.sum(self.grasp_times_selected))/self.grasp_times_selected)
+        value = self.grasp_scores/self.grasp_times_selected
+        return np.argmax(value + uncertainty)
+
     def _reset_internal(self):
         super()._reset_internal()
 
@@ -380,7 +390,7 @@ class SlideCIP(SingleArmEnv, CIP):
         self.sim.model.body_quat[slide_body_id] = slide_quat
         if self.ee_fixed_to_handle:
 
-            self.cur_grasp = np.random.choice(np.arange(len(self.heuristic_grasps)), p=self.grasp_scores/np.sum(self.grasp_scores))
+            self.cur_grasp = self._UCB_grasp_sample()#np.random.choice(np.arange(len(self.heuristic_grasps)), p=self.grasp_scores/np.sum(self.grasp_scores))
             sampled_pose = self.heuristic_grasps[self.cur_grasp]
 
             self.set_grasp_heuristic(sampled_pose, self.slide.root_body, type='top', wide=True)

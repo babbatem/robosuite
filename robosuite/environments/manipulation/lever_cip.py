@@ -126,7 +126,7 @@ class LeverCIP(SingleArmEnv, CIP):
         camera_segmentations=None,  # {None, instance, class, element}
         renderer="mujoco",
         renderer_config=None,
-        ee_fixed_to_handle=False
+        ee_fixed_to_handle=False,
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
@@ -147,10 +147,13 @@ class LeverCIP(SingleArmEnv, CIP):
         #TODO should get this path in a more systematic way
         heuristic_grasps_path = "./grasps/"+task+".pkl"
         self.heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
-        self.grasp_scores = np.ones((len(self.heuristic_grasps)))
-        self.cur_grasp = None
-            
 
+        grasp_scores_path = "./grasps/scores/"+task+".pkl"
+        self.grasp_scores = pickle.load(open(grasp_scores_path,"rb"))
+        grasp_times_path = "./grasps/times/"+task+".pkl"
+        self.grasp_times_selected = pickle.load(open(grasp_times_path,"rb"))
+        self.cur_grasp = np.random.randint(0, len(self.heuristic_grasps))
+            
         super().__init__(
             robots=robots,
             env_configuration=env_configuration,
@@ -202,8 +205,6 @@ class LeverCIP(SingleArmEnv, CIP):
         # sparse completion reward
         if self._check_success():
             reward = 1.0
-            if self.cur_grasp is not None: 
-                self.grasp_scores[self.cur_grasp] += 1
 
         # else, we consider only the case if we're using shaped rewards
         elif self.reward_shaping:
@@ -369,6 +370,11 @@ class LeverCIP(SingleArmEnv, CIP):
 
         return observables
 
+    def _UCB_grasp_sample(self, c=.25):
+        uncertainty = c * np.sqrt(np.log(np.sum(self.grasp_times_selected))/self.grasp_times_selected)
+        value = self.grasp_scores/self.grasp_times_selected
+        return np.argmax(value + uncertainty)
+
     def _reset_internal(self):
         super()._reset_internal()
 
@@ -383,7 +389,7 @@ class LeverCIP(SingleArmEnv, CIP):
         if self.ee_fixed_to_handle:
             
             #TODO replace random sampling with making sure grasp is good
-            self.cur_grasp = np.random.choice(np.arange(len(self.heuristic_grasps)), p=self.grasp_scores/np.sum(self.grasp_scores))
+            self.cur_grasp = self._UCB_grasp_sample()#np.random.choice(np.arange(len(self.heuristic_grasps)), p=self.grasp_scores/np.sum(self.grasp_scores))
             sampled_pose = self.heuristic_grasps[self.cur_grasp]
 
             self.set_grasp_heuristic(sampled_pose, self.lever.root_body, type='top', wide=True)
