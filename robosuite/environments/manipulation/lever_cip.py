@@ -260,6 +260,13 @@ class LeverCIP(SingleArmEnv, CIP):
             quat=[0.6380177736282349, 0.3048497438430786, 0.30484986305236816, 0.6380177736282349],
         )
 
+                # Modify default agentview camera
+        mujoco_arena.set_camera(
+            camera_name="agentview2",
+            pos=[0.5986131746834771, -4.392035683362857e-09, 1.8903500240372423],
+            quat=[0.6380177736282349, 0.3048497438430786, 0.30484986305236816, 0.6380177736282349],
+        )
+
         # initialize objects of interest
         self.lever = LeverObject(
             name="Lever",
@@ -395,7 +402,7 @@ class LeverCIP(SingleArmEnv, CIP):
             bool: True if door has been opened
         """
         hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-        return hinge_qpos > 1.57
+        return hinge_qpos > 0.5
 
     def visualize(self, vis_settings):
         """
