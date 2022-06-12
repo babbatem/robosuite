@@ -50,6 +50,12 @@ class DoorCIP(Door, CIP):
         use_latch = False
         self.use_latch = False
 
+        task = self.__class__.__name__
+        heuristic_grasps_path = "./grasps/"+task+".pkl"
+        self.heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
+        self.grasp_scores = np.ones((len(self.heuristic_grasps)))
+        self.cur_grasp = None
+
         # super init 
         super().__init__(robots,
                          env_configuration,
@@ -82,13 +88,11 @@ class DoorCIP(Door, CIP):
 
         super()._reset_internal()
         if self.ee_fixed_to_handle:
-            task = self.__class__.__name__
-            #TODO should get this path in a more systematic way
-            heuristic_grasps_path = "./grasps/"+task+".pkl"
-            heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
             
             #TODO replace random sampling with making sure grasp is good
-            sampled_pose = random.choice(heuristic_grasps)
+            self.cur_grasp = np.random.choice(np.arange(len(self.heuristic_grasps)), p=self.grasp_scores/np.sum(self.grasp_scores))
+            sampled_pose = self.heuristic_grasps[self.cur_grasp]
+
             self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
             self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
             self.sim.forward()
@@ -129,6 +133,8 @@ class DoorCIP(Door, CIP):
         # sparse completion reward
         if self._check_success():
             reward = 1.0
+            if self.cur_grasp is not None: 
+                self.grasp_scores[self.cur_grasp] += 1
 
         # else, we consider only the case if we're using shaped rewards
         elif self.reward_shaping:
