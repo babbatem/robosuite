@@ -97,6 +97,8 @@ class DoorCIP(Door, CIP):
         else:
             self.sim.forward()
 
+        self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
+
     def reward(self, action=None):
         """
         Reward function for the task. 
@@ -143,7 +145,11 @@ class DoorCIP(Door, CIP):
 
             # add hinge qpos component 
             hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-            reward += np.clip(hinge_qpos, 0, 0.5)
+            reward_progress = 0
+            if hinge_qpos > self.handle_current_progress: #progress has been made
+                reward_progress = hinge_qpos - self.handle_current_progress
+                self.handle_current_progress = hinge_qpos
+            reward += np.clip(reward_progress, 0, 0.5)
 
         # Scale reward if requested
         if self.reward_scale is not None:
