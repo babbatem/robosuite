@@ -203,7 +203,12 @@ class SlideCIP(SingleArmEnv, CIP):
 
             # add hinge qpos component 
             hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-            reward += hinge_qpos
+            reward_progress = 0
+            if hinge_qpos > self.handle_current_progress: #progress has been made
+                reward_progress = hinge_qpos - self.handle_current_progress
+                self.handle_current_progress = hinge_qpos
+            reward += np.clip(reward_progress, 0, 0.5)
+            #reward += hinge_qpos
 
         # Scale reward if requested
         if self.reward_scale is not None:
@@ -385,6 +390,7 @@ class SlideCIP(SingleArmEnv, CIP):
             self.robots[0].controller.reset_goal()
         else:
             self.sim.forward()
+        self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
 
     def _check_success(self):
         """
