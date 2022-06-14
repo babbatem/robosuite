@@ -244,8 +244,13 @@ class DrawerCIP(SingleArmEnv, CIP):
             reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
             #reward += reaching_reward
 
+            # add hinge qpos component 
             hinge_qpos = self.sim.data.qpos[self.slider_qpos_addr]
-            reward += hinge_qpos
+            reward_progress = 0
+            if hinge_qpos > self.handle_current_progress: #progress has been made
+                reward_progress = hinge_qpos - self.handle_current_progress
+                self.handle_current_progress = hinge_qpos
+            reward += np.clip(reward_progress, 0, 0.5)
 
         # Scale reward if requested
         if self.reward_scale is not None:
@@ -422,6 +427,8 @@ class DrawerCIP(SingleArmEnv, CIP):
             self.robots[0].controller.reset_goal()
         else:
             self.sim.forward()
+
+        self.handle_current_progress = self.sim.data.qpos[self.slider_qpos_addr]
 
     def _check_success(self):
         """
