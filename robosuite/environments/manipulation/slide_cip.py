@@ -399,7 +399,7 @@ class SlideCIP(SingleArmEnv, CIP):
             bool: True if door has been opened
         """
         hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-        return hinge_qpos > 0.39
+        return hinge_qpos > 0.2
 
     def visualize(self, vis_settings):
         """
