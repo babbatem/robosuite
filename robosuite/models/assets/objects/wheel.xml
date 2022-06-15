@@ -16,7 +16,7 @@
                 group="0" 
         />
         
-        <joint name="hinge" type="hinge" pos="0 0 0" axis="0 0 1" damping="0.1" limited="true" range="-.5 .5" />
+        <joint name="hinge" type="hinge" pos="0 -.15 0" axis="0 0 1" damping="0.1" limited="true" range="0 2" />
         <site name="handle" pos="-.02 0.15 0" size="0.02" rgba="0 0 1 1" />  
         </body>
     </body>
