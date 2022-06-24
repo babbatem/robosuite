@@ -44,11 +44,13 @@ class DoorCIP(Door, CIP):
                  camera_depths=False,
                  camera_segmentations=None,  # {None, instance, class, element}
                  task_config=None,
-                 ee_fixed_to_handle=False):
+                 ee_fixed_to_handle=False,
+                 grasp_idx=0):
 
         self.ee_fixed_to_handle = ee_fixed_to_handle
         use_latch = False
         self.use_latch = False
+        self.grasp_idx = grasp_idx
 
         # super init 
         super().__init__(robots,
@@ -88,7 +90,9 @@ class DoorCIP(Door, CIP):
             heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
             
             #TODO replace random sampling with making sure grasp is good
-            sampled_pose = random.choice(heuristic_grasps)
+            #sampled_pose = random.choice(heuristic_grasps)
+            sampled_pose = heuristic_grasps[self.grasp_idx]
+            print("sampled pose:", sampled_pose)
             self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
             self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
             self.sim.forward()
