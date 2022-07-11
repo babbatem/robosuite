@@ -142,6 +142,7 @@ class LeverCIP(SingleArmEnv, CIP):
         # object placement initializer
         self.placement_initializer = placement_initializer
         self.ee_fixed_to_handle = ee_fixed_to_handle
+        self.grasp_pose = None
 
 
         super().__init__(
@@ -384,14 +385,8 @@ class LeverCIP(SingleArmEnv, CIP):
         lever_body_id = self.sim.model.body_name2id(self.lever.root_body)
         self.sim.model.body_pos[lever_body_id] = lever_pos
         self.sim.model.body_quat[lever_body_id] = lever_quat
-        if self.ee_fixed_to_handle:
-            task = self.__class__.__name__
-            #TODO should get this path in a more systematic way
-            heuristic_grasps_path = "./grasps/"+task+".pkl"
-            heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
-            
-            #TODO replace random sampling with making sure grasp is good
-            sampled_pose = random.choice(heuristic_grasps)
+        if self.ee_fixed_to_handle and type(self.grasp_pose) != type(None):
+            sampled_pose = self.grasp_pose
             self.set_grasp_heuristic(sampled_pose, self.lever.root_body, type='top', wide=True)
             self.set_grasp_heuristic(sampled_pose, self.lever.root_body, type='top', wide=True)
             self.sim.forward()
