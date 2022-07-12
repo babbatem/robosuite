@@ -177,6 +177,7 @@ class DrawerCIP(SingleArmEnv, CIP):
         # object placement initializer
         self.placement_initializer = placement_initializer
         self.ee_fixed_to_handle = ee_fixed_to_handle
+        self.grasp_pose = None
 
         super().__init__(
             robots=robots,
@@ -315,7 +316,7 @@ class DrawerCIP(SingleArmEnv, CIP):
                 name="ObjectSampler",
                 mujoco_objects=self.drawer,
                 x_range=[0,0], #[0.07, 0.09],
-                y_range=[0,0], #[-0.01, 0.01],
+                y_range=[-0.15,-0.15], #[-0.01, 0.01],
                 rotation=(-np.pi/2.0,-np.pi/2.0), #(-np.pi / 2.0 - 0.25, -np.pi / 2.0),
                 rotation_axis="z",
                 ensure_object_boundary_in_range=False,
@@ -412,14 +413,9 @@ class DrawerCIP(SingleArmEnv, CIP):
         drawer_body_id = self.sim.model.body_name2id(self.drawer.root_body)
         self.sim.model.body_pos[drawer_body_id] = drawer_pos
         self.sim.model.body_quat[drawer_body_id] = drawer_quat
-        if self.ee_fixed_to_handle:
-            task = self.__class__.__name__
-            #TODO should get this path in a more systematic way
-            heuristic_grasps_path = "./grasps/"+task+".pkl"
-            heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
-            
+        if self.ee_fixed_to_handle and type(self.grasp_pose) != type(None):
             #TODO replace random sampling with making sure grasp is good
-            sampled_pose = random.choice(heuristic_grasps)
+            sampled_pose = self.grasp_pose
             self.set_grasp_heuristic(sampled_pose, self.drawer.root_body, type='top', wide=True)
             self.set_grasp_heuristic(sampled_pose, self.drawer.root_body, type='top', wide=True)
             self.sim.forward()

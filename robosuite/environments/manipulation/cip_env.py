@@ -18,6 +18,7 @@ class CIP(object):
         ik_config.pop("input_min", None)
         ik_config.pop("output_max", None)
         ik_config.pop("output_min", None)
+        ik_config["actuator_range"] = (np.array([-2.7973,-1.6628,-2.7973,-2.9718,-2.7973,-0.0175,-2.7973]),np.array([2.7973,1.6628,2.7973,-0.169,2.7973,3.65,2.7973]))
 
         self.IK = controller_factory("IK_POSE", ik_config)
 
