@@ -1,6 +1,13 @@
+import os 
+from os.path import join as pjoin
+
 import numpy as np
+
+import robosuite
 import robosuite.utils.transform_utils as T
 from robosuite.controllers import controller_factory
+
+from tracikpy import TracIKSolver
 
 class CIP(object):
     """
@@ -19,8 +26,42 @@ class CIP(object):
         ik_config.pop("output_max", None)
         ik_config.pop("output_min", None)
         ik_config["actuator_range"] = (np.array([-2.7973,-1.6628,-2.7973,-2.9718,-2.7973,-0.0175,-2.7973]),np.array([2.7973,1.6628,2.7973,-0.169,2.7973,3.65,2.7973]))
-
         self.IK = controller_factory("IK_POSE", ik_config)
+
+        # self.robot_name = self.robots[0].name
+        # self.robot_urdf = pjoin(
+        #         os.path.join(robosuite.models.assets_root, "bullet_data"),
+        #         "{}_description/urdf/{}_arm.urdf".format(self.robot_name.lower(), self.robot_name.lower()),
+        #     )
+
+        # # TODO: other robots etc. 
+        # self.base_link_name = "panda_link0"
+        # self.ee_link_name = "panda_link8"
+        # self.solver = TracIKSolver(
+        #                             self.robot_urdf,
+        #                             self.base_link_name,
+        #                             self.ee_link_name
+        #                         )
+        
+        # breakpoint()   
+
+    def set_grasp_tracik(self, target_matrix, wide=False):
+        """
+        target_matrix: desired ee pose in world frame
+        """
+        # self.robots[0].eef_rot_offset
+        # self.robots[0].base_pos
+        # self.robots[0].base_ori
+
+        # map desired ee pose to desired link8 pose in world
+        # account for ...
+
+        # transform into frame of base_pos (adjust for link0 in URDF...)
+
+        # solve for q in base_pose
+
+
+
 
     def set_grasp_heuristic(self, target_matrix, root_body, type="top", wide=False):
         self._setup_ik()
