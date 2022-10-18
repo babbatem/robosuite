@@ -55,8 +55,8 @@ class CIP(object):
 
         self.sim.forward()
         self.render()
+        breakpoint()
 
-        cur_ee_pos = self._eef_xpos
         cur_link7_pos = self.sim.data.body_xpos[self.sim.model.body_name2id("robot0_link7")]
         cur_link7_xmat = self.sim.data.body_xmat[self.sim.model.body_name2id("robot0_link7")].reshape(3,3)
         link7_in_world = np.eye(4)
@@ -68,6 +68,27 @@ class CIP(object):
         base_pose = (base_pos, base_ori)
         base_in_world = T.pose2mat(base_pose)
         link7_in_base = np.linalg.inv(base_in_world) @ link7_in_world
+
+        link8_in_link7 = np.eye(4)
+        link8_in_link7[:3, -1] = [0., 0., 0.107]
+        link8_in_base = link7_in_base @ link8_in_link7
+
+        grp_pos = self.sim.data.site_xpos[self.sim.model.site_name2id("gripper0_grip_site")]
+        grp_xmat = self.sim.data.site_xmat[self.sim.model.site_name2id("gripper0_grip_site")].reshape(3,3)
+        grp_in_world = np.eye(4)
+        grp_in_world[:3, :3] = grp_xmat
+        grp_in_world[:3, -1] = grp_pos
+        grp_in_base = np.linalg.inv(base_in_world) @ grp_in_world
+
+        target_in_base = np.linalg.inv(base_in_world) @ target_matrix
+
+        # target_matrix = grp_in_base
+        link7_in_gripper = np.linalg.inv(grp_in_world) @ link7_in_world
+        target_link7 = target_in_base @ link7_in_gripper
+
+        # gripper_in_link7 = 
+
+        # gripper0_grip_site
         
         # adjust for eef offset between mujoco and tracIK 
         # target_pos, target_orn = T.mat2pose(target_matrix)
@@ -87,18 +108,24 @@ class CIP(object):
         # ee_in_link0 = np.linalg.inv(link0_in_world) @ world_frame_target
         
         # solve 
-        qpos = self.solver.ik(link7_in_base)
-
-        breakpoint()
+        # qpos = self.solver.ik(link7_in_base, qinit=self.sim.data.qpos[:7])
+        # qpos = self.solver.ik(link7_in_base, qinit=np.zeros(7))
+        qpos = self.solver.ik(target_link7)
 
         # set joints 
         self.sim.data.qpos[:7] = qpos
         self.robots[0].init_qpos = qpos
         self.robots[0].initialization_noise['magnitude'] = 0.0
 
+        # TODO: NULLSPACE REFERENCE POSE??
+
         # override initial gripper qpos for wide grasp 
         if wide:
             self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+
+        self.sim.forward()
+        self.render()
+        breakpoint()
         
 
 
