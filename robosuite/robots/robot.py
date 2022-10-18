@@ -235,13 +235,13 @@ class Robot(object):
         Returns:
             bool: True if this arm is near its joint limits
         """
-        tolerance = 0.1
+        tolerance = 0.0001
         for (qidx, (q, q_limits)) in enumerate(
             zip(self.sim.data.qpos[self._ref_joint_pos_indexes], self.sim.model.jnt_range[self._ref_joint_indexes])
         ):
             if q_limits[0] != q_limits[1] and not (q_limits[0] + tolerance < q < q_limits[1] - tolerance):
-                #print("Joint limit reached in joint " + str(qidx))
-                #print("Joint min is {min} and max is {max}, joint {qidx} violated with {j}".format(qidx=qidx, min=q_limits[0], max=q_limits[1], j=q))
+                print("Joint limit reached in joint " + str(qidx))
+                print("Joint min is {min} and max is {max}, joint {qidx} violated with {j}".format(qidx=qidx, min=q_limits[0], max=q_limits[1], j=q))
                 return True
         return False
 

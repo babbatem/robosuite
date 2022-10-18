@@ -49,7 +49,8 @@ class DoorCIP(Door, CIP):
         self.ee_fixed_to_handle = ee_fixed_to_handle
         use_latch = False
         self.use_latch = False
-        self.grasp_pose = None
+        self.grasp_strategy = "weighted"
+        self.heuristic_grasps_path = None
 
         # super init 
         super().__init__(robots,
@@ -82,14 +83,55 @@ class DoorCIP(Door, CIP):
     def _reset_internal(self):
 
         super()._reset_internal()
-        if self.ee_fixed_to_handle and type(self.grasp_pose) != type(None):
-            #TODO replace random sampling with making sure grasp is good
-            sampled_pose = self.grasp_pose
-            self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
-            self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
-            self.sim.forward()
-            self.robots[0].controller.update(force=True)
-            self.robots[0].controller.reset_goal()
+        task = self.__class__.__name__
+        if self.ee_fixed_to_handle: 
+            keep_resetting = True
+            idx = 0
+            while keep_resetting:
+                print("Getting a good reset")
+                if self.grasp_strategy == None:
+                    heuristic_grasps_path = "./grasps/"+task+"_filtered.pkl"
+                    heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
+
+                    grasp_list, grasp_wp_scores = list(zip(*heuristic_grasps))
+                    
+                    #Grasp pose in object frame
+                    sampled_pose = random.choice(grasp_list)
+                elif self.grasp_strategy == "weighted":
+                    heuristic_grasps_path = "./grasps/"+task+"_filtered.pkl"
+                    heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
+
+                    grasp_list, grasp_wp_scores = list(zip(*heuristic_grasps))
+
+                    grasp_list = [x for _, x in sorted(zip(grasp_wp_scores, grasp_list))]
+                    
+                    #Grasp pose in object frame
+                    #sampled_pose = random.choices(grasp_list, weights=grasp_wp_scores, k=1)[0]
+                    sampled_pose = grasp_list[idx]
+                    idx += 1
+                    print(idx)
+                    if idx == len(grasp_list):
+                        idx = 0
+                elif self.grasp_strategy == "max":
+                    heuristic_grasps_path = "./grasps/"+task+"_filtered.pkl"
+                    heuristic_grasps = pickle.load(open(heuristic_grasps_path,"rb"))
+
+                    grasp_list, grasp_wp_scores = list(zip(*heuristic_grasps))
+                    idx_max = np.argmax(grasp_wp_scores)
+                    #Grasp pose in object frame
+                    sampled_pose = grasp_list[idx_max]
+                elif self.grasp_strategy == "fixed":
+                    sampled_pose = self.grasp_pose
+
+
+                #TODO replace random sampling with making sure grasp is good
+                self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+                self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+                self.sim.forward()
+                self.robots[0].controller.update(force=True)
+                self.robots[0].controller.reset_goal()
+
+                keep_resetting = self.robots[0].check_q_limits()
         else:
             self.sim.forward()
 
