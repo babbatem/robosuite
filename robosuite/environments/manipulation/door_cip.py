@@ -82,14 +82,19 @@ class DoorCIP(Door, CIP):
     def _reset_internal(self):
 
         super()._reset_internal()
+
+        self._setup_ik()
         if self.ee_fixed_to_handle and type(self.grasp_pose) != type(None):
             #TODO replace random sampling with making sure grasp is good
             sampled_pose = self.grasp_pose
-            self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
-            self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+            # self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+            # self.set_grasp_heuristic(sampled_pose, self.door.root_body, type='top', wide=True)
+            self.set_grasp_tracik(sampled_pose, wide=True)
             self.sim.forward()
             self.robots[0].controller.update(force=True)
             self.robots[0].controller.reset_goal()
+
+            breakpoint()
         else:
             self.sim.forward()
 
