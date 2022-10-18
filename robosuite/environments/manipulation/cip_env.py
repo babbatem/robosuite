@@ -34,7 +34,7 @@ class CIP(object):
                 "{}_description/urdf/{}_arm.urdf".format(self.robot_name.lower(), self.robot_name.lower()),
             )
         self.base_link_name = "panda_link0"
-        self.ee_link_name = "panda_link7"
+        self.ee_link_name = "panda_link8"
         self.solver = TracIKSolver(
                                     self.robot_urdf,
                                     self.base_link_name,
@@ -81,12 +81,10 @@ class CIP(object):
         grp_in_base = np.linalg.inv(base_in_world) @ grp_in_world
 
         target_in_base = np.linalg.inv(base_in_world) @ target_matrix
-
-        # target_matrix = grp_in_base
-        link7_in_gripper = np.linalg.inv(grp_in_world) @ link7_in_world
-        target_link7 = target_in_base @ link7_in_gripper
-
-        # gripper_in_link7 = 
+        # link7_in_gripper = np.linalg.inv(grp_in_world) @ link7_in_world
+        # target_link7 = target_in_base @ link7_in_gripper
+        link8_in_gripper = np.linalg.inv(grp_in_base) @ link8_in_base
+        target_link8 = target_in_base @ link8_in_gripper
 
         # gripper0_grip_site
         
@@ -110,7 +108,8 @@ class CIP(object):
         # solve 
         # qpos = self.solver.ik(link7_in_base, qinit=self.sim.data.qpos[:7])
         # qpos = self.solver.ik(link7_in_base, qinit=np.zeros(7))
-        qpos = self.solver.ik(target_link7)
+        # qpos = self.solver.ik(target_link7)
+        qpos = self.solver.ik(target_link8)
 
         # set joints 
         self.sim.data.qpos[:7] = qpos
@@ -125,9 +124,16 @@ class CIP(object):
 
         self.sim.forward()
         self.render()
+
+        grp_pos = self.sim.data.site_xpos[self.sim.model.site_name2id("gripper0_grip_site")]
+        grp_xmat = self.sim.data.site_xmat[self.sim.model.site_name2id("gripper0_grip_site")].reshape(3,3)
+        grp_in_world = np.eye(4)
+        grp_in_world[:3, :3] = grp_xmat
+        grp_in_world[:3, -1] = grp_pos
+        # print(np.allclose(grp_in_world, target_matrix))
+        print(np.max(np.abs(grp_in_world-target_matrix)))
         breakpoint()
         
-
 
     def set_grasp_heuristic(self, target_matrix, root_body, type="top", wide=False):
         self._setup_ik()
