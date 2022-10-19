@@ -5,6 +5,7 @@ import numpy as np
 
 import robosuite
 import robosuite.utils.transform_utils as T
+from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition
 from robosuite.controllers import controller_factory
 
 from tracikpy import TracIKSolver
@@ -33,10 +34,14 @@ class CIP(object):
                                     self.ee_link_name
                                 )
 
+        self.num_attempts = 10 
 
-    def set_grasp_tracik(self, target_matrix, wide=False):
+
+    def solve_ik(self, target_matrix, wide=False):
         """
-        target_matrix: desired (mujoco) ee pose in world frame. 
+        Given ee pose in world frame, returns a valid qpos or None. 
+
+        @target_matrix: desired (mujoco) ee pose in world frame. 
 
         Two messy bits: 
         a) we need to solve IK in "panda_link0" frame, not world.  
@@ -86,17 +91,21 @@ class CIP(object):
         # solve
         # qpos = self.solver.ik(link8_in_base, qinit=self.sim.data.qpos[:7])
         # qpos = self.solver.ik(link8_in_base, qinit=np.zeros(7))
-        qpos = self.solver.ik(target_link8)
+        qpos = None
+        for _ in range(self.num_attempts):
+            qpos = self.solver.ik(target_link8)
+            if qpos is None: 
+                continue 
 
-        # set joints 
-        self.sim.data.qpos[:7] = qpos
-        self.robots[0].init_qpos = qpos
-        self.robots[0].initialization_noise['magnitude'] = 0.0
+            collision_score = isInvalidMJ(self)
+            if collision_score != 0:
+                qpos = None 
+                continue 
 
-        # TODO: NULLSPACE REFERENCE POSE?? e.g. in controller? 
+            if checkJointPosition(self, qpos):
+                qpos = None 
+                continue 
 
-        # override initial gripper qpos for wide grasp 
-        if wide:
-            self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+            break
 
-        self.sim.forward()
+        return qpos 
