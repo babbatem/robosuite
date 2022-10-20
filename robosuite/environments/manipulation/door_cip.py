@@ -83,19 +83,7 @@ class DoorCIP(Door, CIP):
         CIP.__init__(self)
 
     def _reset_internal(self):
-
         super()._reset_internal()
-
-        if self.ee_fixed_to_handle and type(self.grasp_pose) != type(None):
-            
-            sampled_pose = self.grasp_pose
-            CIP.set_grasp_tracik(self, sampled_pose, wide=True)
-            self.sim.forward()
-            self.robots[0].controller.update(force=True)
-            self.robots[0].controller.reset_goal()
-        else:
-            self.sim.forward()
-
         self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
 
     def reward(self, action=None):

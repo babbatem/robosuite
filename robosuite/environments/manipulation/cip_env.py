@@ -5,7 +5,7 @@ import numpy as np
 
 import robosuite
 import robosuite.utils.transform_utils as T
-from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition
+from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition, setGeomIDs
 from robosuite.controllers import controller_factory
 
 from tracikpy import TracIKSolver
@@ -18,6 +18,7 @@ class CIP(object):
     def __init__(self):
         super(CIP, self).__init__()
         self.solver = None
+        self._setup_ik()
 
     def _setup_ik(self):
 
@@ -35,7 +36,55 @@ class CIP(object):
                                 )
 
         self.num_attempts = 10 
+        setGeomIDs(self)
 
+    def reset_to_grasp(self, wide=False):
+      
+        assert self.grasp_pose is not None
+        # override initial gripper qpos for wide grasp 
+        if wide:
+            self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+
+        qpos = None
+        for _ in range(self.num_attempts):
+            qpos = self.solve_ik(self.grasp_pose)
+            if qpos is None: 
+                continue 
+
+            # set joints 
+            self.sim.data.qpos[:7] = qpos
+            self.sim.forward()
+            self.render()
+            breakpoint()
+
+            collision_score = isInvalidMJ(self)
+            if collision_score != 0:
+                qpos = None 
+                continue 
+
+            self.render()
+            breakpoint()
+
+            if checkJointPosition(self, qpos):
+                qpos = None 
+                continue
+
+            self.render()
+            breakpoint() 
+
+            break
+
+        if qpos is None:
+            return False 
+
+        self.robots[0].init_qpos = qpos
+        self.robots[0].initialization_noise['magnitude'] = 0.0
+        
+        self.sim.forward()
+        self.robots[0].controller.update(force=True)
+        self.robots[0].controller.reset_goal()
+        # TODO: NULLSPACE REFERENCE POSE?? e.g. in controller? 
+        return True 
 
     def solve_ik(self, target_matrix, wide=False):
         """
@@ -91,21 +140,5 @@ class CIP(object):
         # solve
         # qpos = self.solver.ik(link8_in_base, qinit=self.sim.data.qpos[:7])
         # qpos = self.solver.ik(link8_in_base, qinit=np.zeros(7))
-        qpos = None
-        for _ in range(self.num_attempts):
-            qpos = self.solver.ik(target_link8)
-            if qpos is None: 
-                continue 
-
-            collision_score = isInvalidMJ(self)
-            if collision_score != 0:
-                qpos = None 
-                continue 
-
-            if checkJointPosition(self, qpos):
-                qpos = None 
-                continue 
-
-            break
-
+        qpos = self.solver.ik(target_link8) 
         return qpos 

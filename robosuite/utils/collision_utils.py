@@ -1,3 +1,7 @@
+ground_geom_id = None
+robot_geom_ids = []
+obj_geom_ids = []
+
 def setGeomIDs(env):
     global ground_geom_id
     global robot_geom_ids
