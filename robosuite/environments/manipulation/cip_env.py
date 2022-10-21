@@ -54,23 +54,15 @@ class CIP(object):
             # set joints 
             self.sim.data.qpos[:7] = qpos
             self.sim.forward()
-            self.render()
-            breakpoint()
 
             collision_score = isInvalidMJ(self)
             if collision_score != 0:
                 qpos = None 
                 continue 
 
-            self.render()
-            breakpoint()
-
             if checkJointPosition(self, qpos):
                 qpos = None 
                 continue
-
-            self.render()
-            breakpoint() 
 
             break
 
@@ -79,7 +71,7 @@ class CIP(object):
 
         self.robots[0].init_qpos = qpos
         self.robots[0].initialization_noise['magnitude'] = 0.0
-        
+
         self.sim.forward()
         self.robots[0].controller.update(force=True)
         self.robots[0].controller.reset_goal()
