@@ -75,7 +75,7 @@ class CIP(object):
         self.sim.forward()
         self.robots[0].controller.update(force=True)
         self.robots[0].controller.reset_goal()
-        # TODO: NULLSPACE REFERENCE POSE?? e.g. in controller? 
+        self.robots[0].controller.update_initial_joints(qpos)
         return True 
 
     def solve_ik(self, target_matrix, wide=False):
