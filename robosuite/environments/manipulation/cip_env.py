@@ -161,7 +161,7 @@ class CIP(object):
         ee_pose_target = np.zeros(7)
         ee_pose_target[:3] = target_link8[:3,-1]
         quat = T.mat2quat(target_link8[:3, :3])
-        quat = T.convert_quat(quat)
+        quat = T.convert_quat(quat, to="wxyz")
         ee_pose_target[3:7] = quat
 
         samples, _ = self.solver.make_samples(
