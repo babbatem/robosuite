@@ -2,13 +2,18 @@ import os
 from os.path import join as pjoin
 
 import numpy as np
+import yaml 
 
 import robosuite
 import robosuite.utils.transform_utils as T
 from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition, setGeomIDs
 from robosuite.controllers import controller_factory
 
-from tracikpy import TracIKSolver
+# from tracikpy import TracIKSolver
+from ikflow.utils import get_ik_solver
+
+with open("ikflow/model_descriptions.yaml", "r") as f:
+    MODEL_DESCRIPTIONS = yaml.safe_load(f)
 
 class CIP(object):
     """
@@ -22,20 +27,16 @@ class CIP(object):
 
     def _setup_ik(self):
 
-        self.robot_name = self.robots[0].name
-        self.robot_urdf = pjoin(
-                os.path.join(robosuite.models.assets_root, "bullet_data"),
-                "{}_description/urdf/{}_arm.urdf".format(self.robot_name.lower(), self.robot_name.lower()),
-            )
-        self.base_link_name = "panda_link0"
-        self.ee_link_name = "panda_link8"
-        self.solver = TracIKSolver(
-                                    self.robot_urdf,
-                                    self.base_link_name,
-                                    self.ee_link_name
-                                )
+        model_name = "panda_lite"
+        model_weights_filepath = MODEL_DESCRIPTIONS[model_name]["model_weights_filepath"]
+        robot_name = MODEL_DESCRIPTIONS[model_name]["robot_name"]
+        hparams = MODEL_DESCRIPTIONS[model_name]
 
-        self.num_attempts = 10 
+        # Build IkflowSolver and set weights
+        ik_solver, hyper_parameters, robot_model = get_ik_solver(model_weights_filepath, hparams, robot_name)
+        self.solver = ik_solver
+
+        # self.num_attempts = 10 
         setGeomIDs(self)
 
     def reset_to_grasp(self, wide=False):
@@ -45,26 +46,41 @@ class CIP(object):
         if wide:
             self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
 
-        qpos = None
-        for _ in range(self.num_attempts):
-            qpos = self.solve_ik(self.grasp_pose)
-            if qpos is None: 
-                continue 
-
-            # set joints 
+        ik_solns = self.solve_ik(self.grasp_pose)
+        for qpos in ik_solns:
             self.sim.data.qpos[:7] = qpos
             self.sim.forward()
+            self.render()
+            breakpoint()
 
-            collision_score = isInvalidMJ(self)
-            if collision_score != 0:
-                qpos = None 
-                continue 
+        import sys; sys.exit()
 
-            if checkJointPosition(self, qpos):
-                qpos = None 
-                continue
 
-            break
+        # qpos = None
+        # for _ in range(self.num_attempts):
+            # qpos = self.solve_ik(self.grasp_pose)
+
+
+
+
+
+            # if qpos is None: 
+            #     continue 
+
+            # # set joints 
+            # self.sim.data.qpos[:7] = qpos
+            # self.sim.forward()
+
+            # collision_score = isInvalidMJ(self)
+            # if collision_score != 0:
+            #     qpos = None 
+            #     continue 
+
+            # if checkJointPosition(self, qpos):
+            #     qpos = None 
+            #     continue
+
+            # break
 
         if qpos is None:
             return False 
@@ -132,5 +148,28 @@ class CIP(object):
         # solve
         # qpos = self.solver.ik(link8_in_base, qinit=self.sim.data.qpos[:7])
         # qpos = self.solver.ik(link8_in_base, qinit=np.zeros(7))
-        qpos = self.solver.ik(target_link8) 
-        return qpos 
+        # qpos = self.solver.ik(target_link8)
+
+
+        # IKFLOW samples 
+        # Get latent distribution parameters
+        latent_noise_distribution = "gaussian"
+        latent_noise_scale = 0.75
+        samples_per_pose = 50
+
+        # solve
+        ee_pose_target = np.zeros(7)
+        ee_pose_target[:3] = target_link8[:3,-1]
+        quat = T.mat2quat(target_link8[:3, :3])
+        quat = T.convert_quat(quat)
+        ee_pose_target[3:7] = quat
+
+        samples, _ = self.solver.make_samples(
+                ee_pose_target,
+                samples_per_pose,
+                latent_noise_distribution=latent_noise_distribution,
+                latent_noise_scale=latent_noise_scale,
+            )
+        # samples = samples.detach().cpu()
+        # breakpoint()
+        return samples.detach().cpu()
