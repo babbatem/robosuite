@@ -1,5 +1,6 @@
 import os 
 from os.path import join as pjoin
+import math 
 
 import numpy as np
 
@@ -8,20 +9,21 @@ import robosuite.utils.transform_utils as T
 from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition, setGeomIDs
 from robosuite.controllers import controller_factory
 
-from tracikpy import TracIKSolver
-
 class CIP(object):
     """
     enables functionality for resetting with grasping, safety, etc. 
     construct robosuite env as class EnvName(SingleArmEnv, CIP)
     """
-    def __init__(self):
+    def __init__(self, cached_ik=False):
         super(CIP, self).__init__()
-        self.solver = None
-        self._setup_ik()
+        if cached_ik:
+            self.solver = None      
+        else:
+            self._setup_ik()
 
     def _setup_ik(self):
 
+        from tracikpy import TracIKSolver
         self.robot_name = self.robots[0].name
         self.robot_urdf = pjoin(
                 os.path.join(robosuite.models.assets_root, "bullet_data"),
@@ -35,7 +37,7 @@ class CIP(object):
                                     self.ee_link_name
                                 )
 
-        self.num_attempts = 10 
+        self.num_attempts = 1000 
         setGeomIDs(self)
 
     def reset_to_grasp(self, wide=False):
@@ -46,6 +48,8 @@ class CIP(object):
             self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
 
         qpos = None
+        best_manip = -np.inf
+        best_qpos = None
         for _ in range(self.num_attempts):
             qpos = self.solve_ik(self.grasp_pose)
             if qpos is None: 
@@ -55,6 +59,7 @@ class CIP(object):
             self.sim.data.qpos[:7] = qpos
             self.sim.forward()
 
+            # ensure valid
             collision_score = isInvalidMJ(self)
             if collision_score != 0:
                 qpos = None 
@@ -64,18 +69,23 @@ class CIP(object):
                 qpos = None 
                 continue
 
-            break
+            # keep qpos w/ highest manipulability score 
+            w,p,wp = self.check_manipulability()
+            if wp > best_manip:
+                best_manip = wp 
+                best_qpos = qpos
 
-        if qpos is None:
+        if best_qpos is None:
             return False 
 
-        self.robots[0].init_qpos = qpos
+        self.sim.data.qpos[:7] = best_qpos
+        self.robots[0].init_qpos = best_qpos
         self.robots[0].initialization_noise['magnitude'] = 0.0
 
         self.sim.forward()
         self.robots[0].controller.update(force=True)
         self.robots[0].controller.reset_goal()
-        self.robots[0].controller.update_initial_joints(qpos)
+        self.robots[0].controller.update_initial_joints(best_qpos)
         return True 
 
     def solve_ik(self, target_matrix, wide=False):
@@ -130,7 +140,33 @@ class CIP(object):
         target_link8 = target_in_base @ link8_in_gripper
         
         # solve
-        # qpos = self.solver.ik(link8_in_base, qinit=self.sim.data.qpos[:7])
-        # qpos = self.solver.ik(link8_in_base, qinit=np.zeros(7))
         qpos = self.solver.ik(target_link8) 
         return qpos 
+
+    def check_manipulability(self):
+        ### Manipulability elipsoid
+        # Use jacobian to translate joint velocities to end effector velocities.
+        Jp = self.robots[0].sim.data.get_body_jacp(self.robots[0].robot_model.eef_name).reshape((3, -1))
+        Jp_joint = Jp[:, self.robots[0]._ref_joint_vel_indexes]
+
+        Jr = self.robots[0].sim.data.get_body_jacr(self.robots[0].robot_model.eef_name).reshape((3, -1))
+        Jr_joint = Jr[:, self.robots[0]._ref_joint_vel_indexes]
+
+        J = np.concatenate((Jp,Jr),axis=0)
+
+        JJt = np.matmul(J,J.transpose())
+        Jdet = np.linalg.det(JJt)
+        w = math.sqrt(Jdet)
+
+        ### Penalization for distance to joint limits
+        p = 1
+
+        k = 1 #hyperparameter for adjust behavior near joint limits
+        joint_total = 1
+        for (qidx, (q, q_limits)) in enumerate(
+            zip(self.robots[0].sim.data.qpos[self.robots[0]._ref_joint_pos_indexes], self.robots[0].sim.model.jnt_range[self.robots[0]._ref_joint_indexes])
+        ):
+            joint_total *= (q - q_limits[0])*(q_limits[1]-q)/(q_limits[1]-q_limits[0])
+        p -= math.exp(-k*joint_total)
+
+        return(w,p,w*p)
