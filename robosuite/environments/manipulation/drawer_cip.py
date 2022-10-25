@@ -179,7 +179,8 @@ class DrawerCIP(SingleArmEnv, CIP):
         self.ee_fixed_to_handle = ee_fixed_to_handle
         self.grasp_pose = None
 
-        super().__init__(
+        SingleArmEnv.__init__(
+            self,
             robots=robots,
             env_configuration=env_configuration,
             controller_configs=controller_configs,
@@ -205,6 +206,7 @@ class DrawerCIP(SingleArmEnv, CIP):
             renderer=renderer,
             renderer_config=renderer_config,
         )
+        CIP.__init__(self)
 
     def reward(self, action=None):
         """
@@ -413,17 +415,6 @@ class DrawerCIP(SingleArmEnv, CIP):
         drawer_body_id = self.sim.model.body_name2id(self.drawer.root_body)
         self.sim.model.body_pos[drawer_body_id] = drawer_pos
         self.sim.model.body_quat[drawer_body_id] = drawer_quat
-        if self.ee_fixed_to_handle and type(self.grasp_pose) != type(None):
-            #TODO replace random sampling with making sure grasp is good
-            sampled_pose = self.grasp_pose
-            self.set_grasp_heuristic(sampled_pose, self.drawer.root_body, type='top', wide=True)
-            self.set_grasp_heuristic(sampled_pose, self.drawer.root_body, type='top', wide=True)
-            self.sim.forward()
-            self.robots[0].controller.update(force=True)
-            self.robots[0].controller.reset_goal()
-        else:
-            self.sim.forward()
-
         self.handle_current_progress = self.sim.data.qpos[self.slider_qpos_addr]
 
     def _check_success(self):

@@ -98,7 +98,7 @@
                         <!--<geom type="mesh" mesh="convex-30" group="0"/>
                         <geom pos="0.375 0.4 -0.46" type="mesh" mesh="convex-43" group="0"/> -->
                         <!-- <site name="handle" pos="-0.370823 -0.465 0.443522" size="0.02" rgba="0 0 1 1" /> -->
-                        <geom type="cylinder" pos="-0.383323 -0.475 0.45" size=".015 .1 .015" euler="0 -1.57 0" group="0" rgba="0 0 1 1"/>
+                        <geom type="cylinder" pos="-0.383323 -0.475 0.45" size=".015 .1 .015" euler="0 -1.57 0" group="0" rgba="0 0 1 1" name="handle"/>
                         <geom type="cylinder" pos="-0.32 -0.435 0.45" size=".01 .03 .01" euler="-1.57 0 0" group="0" rgba="0 0 1 1"/> 
                         <geom type="cylinder" pos="-0.44 -0.435 0.45" size=".01 .03 .01" euler="-1.57 0 0" group="0" rgba="0 0 1 1"/>
                         <site name="handle" pos="-0.370823 -0.55 0.35" size="0.02" rgba="0 0 1 1" />

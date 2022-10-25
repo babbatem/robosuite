@@ -144,7 +144,8 @@ class SlideCIP(SingleArmEnv, CIP):
         self.ee_fixed_to_handle = ee_fixed_to_handle
         self.grasp_pose = None
 
-        super().__init__(
+        SingleArmEnv.__init__(
+            self,
             robots=robots,
             env_configuration=env_configuration,
             controller_configs=controller_configs,
@@ -170,6 +171,7 @@ class SlideCIP(SingleArmEnv, CIP):
             renderer=renderer,
             renderer_config=renderer_config,
         )
+        CIP.__init__(self)
 
     def reward(self, action=None):
         """
@@ -376,15 +378,7 @@ class SlideCIP(SingleArmEnv, CIP):
         slide_body_id = self.sim.model.body_name2id(self.slide.root_body)
         self.sim.model.body_pos[slide_body_id] = slide_pos
         self.sim.model.body_quat[slide_body_id] = slide_quat
-        if self.ee_fixed_to_handle and type(self.grasp_pose) != type(None):
-            sampled_pose = self.grasp_pose
-            self.set_grasp_heuristic(sampled_pose, self.slide.root_body, type='top', wide=True)
-            self.set_grasp_heuristic(sampled_pose, self.slide.root_body, type='top', wide=True)
-            self.sim.forward()
-            self.robots[0].controller.update(force=True)
-            self.robots[0].controller.reset_goal()
-        else:
-            self.sim.forward()
+
         self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
 
     def _check_success(self):
