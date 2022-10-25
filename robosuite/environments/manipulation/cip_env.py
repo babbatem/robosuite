@@ -37,7 +37,7 @@ class CIP(object):
         self.num_attempts = 1000 
         setGeomIDs(self)
 
-    def reset_to_grasp(self, wide=False):
+    def reset_to_grasp(self, grasp_pose, wide=False):
 
         if self.solver is None: 
             self._setup_ik()
