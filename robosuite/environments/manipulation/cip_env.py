@@ -37,7 +37,7 @@ class CIP(object):
         self.num_attempts = 1000 
         setGeomIDs(self)
 
-    def set_qpos_and_update(self, qpos, wide=False):
+    def set_qpos_and_update(self, qpos):
         self.sim.data.qpos[:7] = qpos
         self.robots[0].init_qpos = qpos
         self.robots[0].initialization_noise['magnitude'] = 0.0
@@ -53,8 +53,7 @@ class CIP(object):
             self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
 
         # set joints 
-        self.sim.data.qpos[:7] = qpos
-        self.sim.forward()
+        self.set_qpos_and_update(qpos)
 
         # ensure valid
         collision_score = isInvalidMJ(self)
