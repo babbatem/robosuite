@@ -17,7 +17,7 @@ def setGeomIDs(env):
         elif "robot0_" in body_name or "gripper0_" in body_name:
             robot_geom_ids.append(n)
         elif body_name != "world":
-            print(geom_name)
+            #print(geom_name)
             obj_geom_ids.append(n)
 
 def contactBetweenRobotAndObj(contact):
@@ -25,10 +25,10 @@ def contactBetweenRobotAndObj(contact):
     global robot_geom_ids
     global obj_geom_ids
     if contact.geom1 in robot_geom_ids and contact.geom2 in obj_geom_ids:
-        print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
+        #print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
         return True
     if contact.geom2 in robot_geom_ids and contact.geom1 in obj_geom_ids:
-        print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
+        #print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
         return True
     return False
 
@@ -38,10 +38,10 @@ def contactBetweenGripperAndSpecificObj(contact, name):
     global obj_geom_ids
 
     if env.sim.model.geom_id2name(contact.geom1)[:8] == 'gripper0' and env.sim.model.geom_id2name(contact.geom2) == name:
-        print("Contact between {one} and {two}".format(one=env.sim.model.geom_id2name(contact.geom1), two=env.sim.model.geom_id2name(contact.geom2)))
+        #print("Contact between {one} and {two}".format(one=env.sim.model.geom_id2name(contact.geom1), two=env.sim.model.geom_id2name(contact.geom2)))
         return True
     if env.sim.model.geom_id2name(contact.geom2)[:8] == 'gripper0' and env.sim.model.geom_id2name(contact.geom1) == name:
-        print("Contact between {one} and {two}".format(one=env.sim.model.geom_id2name(contact.geom1), two=env.sim.model.geom_id2name(contact.geom2)))
+        #print("Contact between {one} and {two}".format(one=env.sim.model.geom_id2name(contact.geom1), two=env.sim.model.geom_id2name(contact.geom2)))
         return True
     return False
 
