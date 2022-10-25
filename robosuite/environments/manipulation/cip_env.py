@@ -37,12 +37,40 @@ class CIP(object):
         self.num_attempts = 1000 
         setGeomIDs(self)
 
+    def set_qpos_and_update(self, qpos, wide=False):
+        self.sim.data.qpos[:7] = qpos
+        self.robots[0].init_qpos = qpos
+        self.robots[0].initialization_noise['magnitude'] = 0.0
+
+        self.sim.forward()
+        self.robots[0].controller.update(force=True)
+        self.robots[0].controller.reset_goal()
+        self.robots[0].controller.update_initial_joints(qpos)
+
+    def reset_to_qpos(self, qpos, wide=False):
+
+        if wide:
+            self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+
+        # set joints 
+        self.sim.data.qpos[:7] = qpos
+        self.sim.forward()
+
+        # ensure valid
+        collision_score = isInvalidMJ(self)
+        if collision_score != 0:
+            return False
+
+        if checkJointPosition(self, qpos):
+            return False 
+
+        return True
+
     def reset_to_grasp(self, grasp_pose, wide=False):
 
         if self.solver is None: 
             self._setup_ik()
       
-        assert self.grasp_pose is not None
         # override initial gripper qpos for wide grasp 
         if wide:
             self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
@@ -51,7 +79,7 @@ class CIP(object):
         best_manip = -np.inf
         best_qpos = None
         for _ in range(self.num_attempts):
-            qpos = self.solve_ik(self.grasp_pose)
+            qpos = self.solve_ik(grasp_pose)
             if qpos is None: 
                 continue 
 
@@ -78,15 +106,8 @@ class CIP(object):
         if best_qpos is None:
             return False 
 
-        self.sim.data.qpos[:7] = best_qpos
-        self.robots[0].init_qpos = best_qpos
-        self.robots[0].initialization_noise['magnitude'] = 0.0
-
-        self.sim.forward()
-        self.robots[0].controller.update(force=True)
-        self.robots[0].controller.reset_goal()
-        self.robots[0].controller.update_initial_joints(best_qpos)
-        return True 
+        self.set_qpos_and_update(best_qpos)   
+        return True
 
     def solve_ik(self, target_matrix, wide=False):
         """
