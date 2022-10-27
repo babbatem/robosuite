@@ -6,8 +6,10 @@ import numpy as np
 
 import robosuite
 import robosuite.utils.transform_utils as T
-from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition, setGeomIDs
+from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition, setGeomIDs, contactBetweenGripperAndSpecificObj
 from robosuite.controllers import controller_factory
+
+GRIP_NAMES = {'DoorCIP': 'Door_handle', 'DrawerCIP': 'Drawer_handle','SlideCIP': 'Slide_grip','LeverCIP': 'Lever_lever'}
 
 class CIP(object):
     """
@@ -17,6 +19,17 @@ class CIP(object):
     def __init__(self):
         super(CIP, self).__init__()
         self.solver = None
+        setGeomIDs(self)
+
+
+    def check_contact(self,task_name):
+
+        for contact_index in range(self.sim.data.ncon):
+            contact = self.sim.data.contact[contact_index]
+            if contactBetweenGripperAndSpecificObj(contact, GRIP_NAMES[task_name]):
+                return True
+
+        return False
 
     def _setup_ik(self):
 
@@ -35,7 +48,7 @@ class CIP(object):
                                 )
 
         self.num_attempts = 1000 
-        setGeomIDs(self)
+        
 
     def set_qpos_and_update(self, qpos):
         self.sim.data.qpos[:7] = qpos
