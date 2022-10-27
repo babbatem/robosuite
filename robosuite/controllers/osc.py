@@ -5,7 +5,7 @@ import numpy as np
 import robosuite.utils.transform_utils as T
 from robosuite.controllers.base_controller import Controller
 from robosuite.utils.control_utils import *
-
+import copy
 # Supported impedance modes
 IMPEDANCE_MODES = {"fixed", "variable", "variable_kp"}
 
@@ -354,10 +354,91 @@ class OperationalSpaceController(Controller):
         # Calculate and add nullspace torques (nullspace_matrix^T * Gamma_null) to final torques
         # Note: Gamma_null = desired nullspace pose torques, assumed to be positional joint control relative
         #                     to the initial joint positions
-        self.torques += nullspace_torques(
-            self.mass_matrix, nullspace_matrix, self.initial_joint, self.joint_pos, self.joint_vel
+        #self.torques += nullspace_torques(
+        #    self.mass_matrix, nullspace_matrix, self.initial_joint, self.joint_pos, self.joint_vel
+        #)
+
+
+        null_torques_initial = nullspace_torques(
+              self.mass_matrix, nullspace_matrix, self.initial_joint, self.joint_pos, self.joint_vel
         )
 
+        true_joint_mid = (self.sim.model.jnt_range[self.joint_index,0] + self.sim.model.jnt_range[self.joint_index,1]) / 2
+
+        null_torques_mid = nullspace_torques(
+              self.mass_matrix, nullspace_matrix, np.array(true_joint_mid), self.joint_pos, self.joint_vel
+        )
+        #print(null_torques_mid)
+        #self.torques += null_torques_initial
+        self.unsafe = False
+        self.unsafe2 = False
+        self.unsafe_joints = []
+        #self.unsafe_joints2 = []
+        #print(vars(self))
+        tol1 = 0.4
+        tol2 = 0.2
+        for (qidx, (q, q_limits)) in enumerate(
+           zip(self.sim.data.qpos[self.joint_index], self.sim.model.jnt_range[self.joint_index])
+        ):
+
+           if q_limits[0] != q_limits[1] and not (q_limits[0] + tol1 < q < q_limits[1] - tol1):
+                
+               self.unsafe = True
+               self.unsafe_joints.append(qidx)
+
+        # tol2 = 0.1
+        # for (qidx, (q, q_limits)) in enumerate(
+        #    zip(self.sim.data.qpos[self.joint_index], self.sim.model.jnt_range[self.joint_index])
+        # ):
+
+        #    if q_limits[0] != q_limits[1] and not (q_limits[0] + tolerance < q < q_limits[1] - tol2):
+                
+        #        print('=============IN CONTROLLER JOINT VIOLATION==============')
+        #        print(qidx)
+
+        # null_torques2 = np.array([0, 0, 0, 0, 0, 0, 0])
+        safe_null_torques = self.torque_compensation
+
+        for (qidx, (q, q_limits)) in enumerate(
+            zip(self.sim.data.qpos[self.joint_index], self.sim.model.jnt_range[self.joint_index])
+        ):
+            
+            if q_limits[0] != q_limits[1] and not (q_limits[0] + tol2 < q < q_limits[1] - tol2):
+                
+                if (q < q_limits[0] + tol2):
+                    self.unsafe2 = True
+                    safe_null_torques[qidx] = self.actuator_max[qidx]#40*np.abs(np.log(np.abs(q-q_limits[0])/tolerance))#self.actuator_max[qidx] / 8.
+                    #self.unsafe_joints2.append(qidx)
+                    #if self.sim.data.qvel[qidx]<0:
+                        #null_torques2[qidx] += 10*np.abs(self.sim.data.qvel[qidx])
+                elif (q > q_limits[1] - tol2):
+                    self.unsafe2 = True
+                    safe_null_torques[qidx] = self.actuator_min[qidx]#40*np.abs(np.log(np.abs(q-q_limits[1])/tolerance))#self.actuator_min[qidx] / 8.
+                    #self.unsafe_joints2.append(qidx)
+                    # if self.sim.data.qvel[qidx]<0:
+                    #     null_torques2[qidx] -= 10*np.abs(self.sim.data.qvel[qidx])
+        if self.unsafe2:
+            self.torques = safe_null_torques
+            super().run_controller()
+            #print('===============AGRESSIVE SAFETY================')
+            return self.torques
+
+        if self.unsafe:
+            self.null_goal = copy.copy(self.joint_pos)
+            for qidx in self.unsafe_joints:
+                self.null_goal[qidx] = true_joint_mid[qidx]
+            null_torques = nullspace_torques(self.mass_matrix, nullspace_matrix, self.null_goal, self.joint_pos, self.joint_vel)
+            scale = np.min((np.array([80.,80.,80.,80.,80.,12.,12.]- self.torque_compensation)/np.abs(null_torques)))
+            #print('===============NULLSPACE SAFETY================')
+            #print(null_torques2)
+
+            #null_torques2 = np.dot(nullspace_matrix.transpose(), null_torques2)
+            #print(null_torques2)
+            #scale2 = np.min(np.array((([80.,80.,80.,80.,80.,12.,12.]) - self.torque_compensation)/np.abs(null_torques2)))
+            self.torques = scale * null_torques + self.torque_compensation #scale2 * null_torques2 + self.torque_compensation
+        else:
+            self.torques += null_torques_initial
+        self.torques = self.clip_torques(self.torques)
         # Always run superclass call for any cleanups at the end
         super().run_controller()
 
