@@ -276,6 +276,13 @@ class LeverCIP(SingleArmEnv, CIP):
             quat=[0.6380177736282349, 0.3048497438430786, 0.30484986305236816, 0.6380177736282349],
         )
 
+        mujoco_arena.set_camera(
+            camera_name="sideview2",
+            pos=[-0.45651774593317116, 0.0761224129427358, 1.4879572214102434],
+            quat=[0.009905065491771751, 0.006877963156909582, 0.5912228352893879, 0.806418094001364],
+        )
+
+
         # initialize objects of interest
         self.lever = LeverObject(
             name="Lever",
