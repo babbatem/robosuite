@@ -78,7 +78,7 @@ class CIP(object):
 
         return True
 
-    def reset_to_grasp(self, grasp_pose, wide=False):
+    def reset_to_grasp(self, grasp_pose, wide=False, optimal_ik=False):
 
         if self.solver is None: 
             self._setup_ik()
@@ -109,11 +109,16 @@ class CIP(object):
                 qpos = None 
                 continue
 
-            # keep qpos w/ highest manipulability score 
-            w,p,wp = self.check_manipulability()
-            if wp > best_manip:
-                best_manip = wp 
-                best_qpos = qpos
+            # maybe keep qpos w/ highest manipulability score 
+            if not optimal_ik: 
+                best_qpos = qpos 
+                break
+
+            else:
+                w,p,wp = self.check_manipulability()
+                if wp > best_manip:
+                    best_manip = wp 
+                    best_qpos = qpos
 
         if best_qpos is None:
             return False 
