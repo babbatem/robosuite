@@ -20,15 +20,21 @@ def setGeomIDs(env):
             #print(geom_name)
             obj_geom_ids.append(n)
 
-def contactBetweenRobotAndObj(contact):
+def contactBetweenRobotAndObj(contact, env):
     global ground_geom_id
     global robot_geom_ids
     global obj_geom_ids
+    #print([env.sim.model.geom_id2name(ide) for ide in robot_geom_ids])
+    #print([env.sim.model.geom_id2name(ide) for ide in obj_geom_ids])
+    #print([env.sim.model.geom_id2name(ide) for ide in ground_geom_ids])
+    
     if contact.geom1 in robot_geom_ids and contact.geom2 in obj_geom_ids:
-        #print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
+        # print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
+        #print("Contact between {one} and {two}".format(one=env.sim.model.geom_id2name(contact.geom1), two=env.sim.model.geom_id2name(contact.geom2)))
         return True
     if contact.geom2 in robot_geom_ids and contact.geom1 in obj_geom_ids:
-        #print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
+        # print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
+        #print("Contact between {one} and {two}".format(one=env.sim.model.geom_id2name(contact.geom1), two=env.sim.model.geom_id2name(contact.geom2)))
         return True
     return False
 
@@ -61,7 +67,7 @@ def isInvalidMJ(env):
     # so be careful to only read the valid entries.
     for contact_index in range(env.sim.data.ncon):
         contact = env.sim.data.contact[contact_index]
-        if contactBetweenRobotAndObj(contact):
+        if contactBetweenRobotAndObj(contact, env):
             return 1
         elif contactBetweenRobotAndFloor(contact):
             return 2

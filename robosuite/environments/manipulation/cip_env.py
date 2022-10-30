@@ -63,15 +63,26 @@ class CIP(object):
     def reset_to_qpos(self, qpos, wide=False):
 
         if wide:
-            self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+            if "RobotiqThreeFingerGripper" in self.robots[0].gripper.name:
+                #pass
+                self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] =    [ 0.13987982,  0.47298779, -0.16070632, -0.43289019, -0.27461081,
+                                                                                         0.48380009, -0.19345767, -0.29117174,  0.46105661, -0.02633332,
+                                                                                         0.0437916 ]
+            else:
+                self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
 
         # set joints 
         self.set_qpos_and_update(qpos)
 
         # ensure valid
         collision_score = isInvalidMJ(self)
+
+        print(collision_score)
+        print(checkJointPosition(self, qpos))
+        return True
         if collision_score != 0:
             return False
+
 
         if checkJointPosition(self, qpos):
             return False 
@@ -79,13 +90,18 @@ class CIP(object):
         return True
 
     def reset_to_grasp(self, grasp_pose, wide=False, optimal_ik=False):
-
         if self.solver is None: 
             self._setup_ik()
       
         # override initial gripper qpos for wide grasp 
         if wide:
-            self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+            if "RobotiqThreeFingerGripper" in self.robots[0].gripper.name:
+                # self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [ 0.08831205,  0.259975  , -0.06835975, -0.41638033, -0.2141303 ,0.30457444, -0.12399364, -0.25591167,  0.00213905,  0.0111106 ,0.01638777]
+                self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] =    [ 0.13987982,  0.47298779, -0.16070632, -0.43289019, -0.27461081,
+                                                                                         0.48380009, -0.19345767, -0.29117174,  0.46105661, -0.02633332,
+                                                                                         0.0437916 ]
+            else:
+                self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
 
         qpos = None
         best_manip = -np.inf

@@ -331,8 +331,8 @@ class SingleArm(Manipulator):
                 return np.array(self.right_tip_force)
 
 
-            sensors += [gripper_qpos, gripper_qvel, left_tip_site_force, right_tip_site_force]
-            names += [f"{pf}gripper_qpos", f"{pf}gripper_qvel", f"{pf}left_tip_force",  f"{pf}right_tip_force"]
+            sensors += [gripper_qpos, gripper_qvel]#, left_tip_site_force, right_tip_site_force]
+            names += [f"{pf}gripper_qpos", f"{pf}gripper_qvel"]#, f"{pf}left_tip_force",  f"{pf}right_tip_force"]
 
         # Create observables for this robot
         for name, s in zip(names, sensors):
