@@ -6,7 +6,6 @@ import numpy as np
 
 import robosuite
 import robosuite.utils.transform_utils as T
-from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition, setGeomIDs, contactBetweenGripperAndSpecificObj
 from robosuite.controllers import controller_factory
 
 GRIP_NAMES = {'DoorCIP': 'Door_handle', 'DrawerCIP': 'Drawer_handle','SlideCIP': 'Slide_grip','LeverCIP': 'Lever_lever'}
@@ -19,16 +18,13 @@ class CIP(object):
     def __init__(self):
         super(CIP, self).__init__()
         self.solver = None
-        setGeomIDs(self)
+        self.setGeomIDs()
 
-
-    def check_contact(self,task_name):
-
+    def check_gripper_contact(self, task_name):
         for contact_index in range(self.sim.data.ncon):
             contact = self.sim.data.contact[contact_index]
-            if contactBetweenGripperAndSpecificObj(contact, GRIP_NAMES[task_name]):
+            if self.contactBetweenGripperAndSpecificObj(contact, GRIP_NAMES[task_name]):
                 return True
-
         return False
 
     def _setup_ik(self):
@@ -68,12 +64,14 @@ class CIP(object):
         # set joints 
         self.set_qpos_and_update(qpos)
 
+
+
         # ensure valid
-        collision_score = isInvalidMJ(self)
+        collision_score = self.isInvalidMJ()
         if collision_score != 0:
             return False
 
-        if checkJointPosition(self, qpos):
+        if self.checkJointPosition(qpos):
             return False 
 
         return True
@@ -100,12 +98,12 @@ class CIP(object):
             self.sim.forward()
 
             # ensure valid
-            collision_score = isInvalidMJ(self)
+            collision_score = self.isInvalidMJ()
             if collision_score != 0:
                 qpos = None 
                 continue 
 
-            if checkJointPosition(self, qpos):
+            if self.checkJointPosition(qpos):
                 qpos = None 
                 continue
 
@@ -208,3 +206,75 @@ class CIP(object):
         p -= math.exp(-k*joint_total)
 
         return(w,p,w*p)
+
+    def setGeomIDs(self):
+        self.robot_geom_ids = []
+        self.obj_geom_ids = []
+
+        for n in range(self.sim.model.ngeom):
+            body = self.sim.model.geom_bodyid[n]
+            body_name = self.sim.model.body_id2name(body)
+            geom_name = self.sim.model.geom_id2name(n)
+
+            if geom_name == "ground" and body_name == "world":
+                self.ground_geom_id = n
+            elif "robot0_" in body_name or "gripper0_" in body_name:
+                self.robot_geom_ids.append(n)
+            elif body_name != "world":
+                #print(geom_name)
+                self.obj_geom_ids.append(n)
+
+    def contactBetweenRobotAndObj(self,contact):
+        if contact.geom1 in self.robot_geom_ids and contact.geom2 in self.obj_geom_ids:
+            #print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
+            return True
+        if contact.geom2 in self.robot_geom_ids and contact.geom1 in self.obj_geom_ids:
+            #print("Contact between {one} and {two}".format(one=contact.geom1, two=contact.geom2))
+            return True
+        return False
+
+    def contactBetweenGripperAndSpecificObj(self,contact, name):
+
+        if self.sim.model.geom_id2name(contact.geom1)[:8] == 'gripper0' and self.sim.model.geom_id2name(contact.geom2) == name:
+            #print("Contact between {one} and {two}".format(one=self.sim.model.geom_id2name(contact.geom1), two=self.sim.model.geom_id2name(contact.geom2)))
+            return True
+        if self.sim.model.geom_id2name(contact.geom2)[:8] == 'gripper0' and self.sim.model.geom_id2name(contact.geom1) == name:
+            #print("Contact between {one} and {two}".format(one=self.sim.model.geom_id2name(contact.geom1), two=self.sim.model.geom_id2name(contact.geom2)))
+            return True
+        return False
+
+    def contactBetweenRobotAndFloor(self,contact):
+
+        if contact.geom1 == self.ground_geom_id and contact.geom2 in self.robot_geom_ids:
+            return True
+        if contact.geom2 == self.ground_geom_id and contact.geom1 in self.robot_geom_ids:
+            return True
+        return False
+
+    def isInvalidMJ(self):
+        # Note that the contact array has more than `ncon` entries,
+        # so be careful to only read the valid entries.
+        for contact_index in range(self.sim.data.ncon):
+            contact = self.sim.data.contact[contact_index]
+            if self.contactBetweenRobotAndObj(contact):
+                return 1
+            # elif self.contactBetweenRobotAndFloor(contact):
+            #     return 2
+        return 0
+
+    def checkJointPosition(self, qpos):
+        """
+        Check if this robot is either very close or at the joint limits
+
+        Returns:
+            bool: True if this arm is near its joint limits
+        """
+        tolerance = 0.1
+        for (qidx, (q, q_limits)) in enumerate(
+            zip(qpos, self.sim.model.jnt_range[self.robots[0]._ref_joint_indexes])
+        ):
+            if q_limits[0] != q_limits[1] and not (q_limits[0] + tolerance < q < q_limits[1] - tolerance):
+                #print("Joint limit reached in joint " + str(qidx))
+                #print("Joint min is {min} and max is {max}, joint {qidx} violated with {j}".format(qidx=qidx, min=q_limits[0], max=q_limits[1], j=q))
+                return True
+        return False

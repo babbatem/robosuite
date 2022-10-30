@@ -383,8 +383,8 @@ class OperationalSpaceController(Controller):
             self.unsafe_joints = []
             #self.unsafe_joints2 = []
             #print(vars(self))
-            tol1 = 0.45
-            tol2 = 0.3
+            tol1 = 0.3
+            tol2 = 0.2
             for (qidx, (q, q_limits)) in enumerate(
                zip(self.sim.data.qpos[self.joint_index], self.sim.model.jnt_range[self.joint_index])
             ):

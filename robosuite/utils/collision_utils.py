@@ -37,6 +37,8 @@ def contactBetweenGripperAndSpecificObj(contact, name):
     global robot_geom_ids
     global obj_geom_ids
 
+    breakpoint()
+
     if env.sim.model.geom_id2name(contact.geom1)[:8] == 'gripper0' and env.sim.model.geom_id2name(contact.geom2) == name:
         #print("Contact between {one} and {two}".format(one=env.sim.model.geom_id2name(contact.geom1), two=env.sim.model.geom_id2name(contact.geom2)))
         return True
