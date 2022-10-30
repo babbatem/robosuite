@@ -9,7 +9,7 @@ import robosuite.utils.transform_utils as T
 from robosuite.utils.collision_utils import isInvalidMJ, checkJointPosition, setGeomIDs, contactBetweenGripperAndSpecificObj
 from robosuite.controllers import controller_factory
 
-GRIP_NAMES = {'DoorCIP': 'Door_handle', 'DrawerCIP': 'Drawer_handle','SlideCIP': 'Slide_grip','LeverCIP': 'Lever_lever'}
+GRIP_NAMES = {'DoorCIP': 'Door_handle', 'DrawerCIP': 'Drawer_handle','SlideCIP': 'Slide_grip','LeverCIP': 'Lever_lever','ReverseSlideCIP': 'Slide_grip'}
 
 class CIP(object):
     """
