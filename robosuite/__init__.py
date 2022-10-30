@@ -15,6 +15,8 @@ from robosuite.environments.manipulation.door_cip import DoorCIP
 from robosuite.environments.manipulation.drawer_cip import DrawerCIP
 from robosuite.environments.manipulation.lever_cip import LeverCIP
 from robosuite.environments.manipulation.slide_cip import SlideCIP
+from robosuite.environments.manipulation.reverse_slide_cip import ReverseSlideCIP
+from robosuite.environments.manipulation.door_slide_cip import DoorSlideCIP
 
 from robosuite.environments import ALL_ENVIRONMENTS
 from robosuite.controllers import ALL_CONTROLLERS, load_controller_config
