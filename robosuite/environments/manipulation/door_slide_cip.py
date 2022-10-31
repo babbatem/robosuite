@@ -144,6 +144,7 @@ class DoorSlideCIP(SingleArmEnv, CIP):
         self.placement_initializer = placement_initializer
         self.ee_fixed_to_handle = ee_fixed_to_handle
         self.grasp_pose = None
+        #self.mask = "None"
 
         SingleArmEnv.__init__(
             self,
@@ -308,8 +309,7 @@ class DoorSlideCIP(SingleArmEnv, CIP):
                 rotation_axis="z",
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
-                reference_pos=self.table_offset,
-            
+                reference_pos=(-0.2, -0.35, 0.8),
             ))
 
         # task includes arena, robot, and objects of interest
@@ -413,6 +413,18 @@ class DoorSlideCIP(SingleArmEnv, CIP):
 
             sensors = [slide_pos, slide_handle_pos, slide_to_eef_pos, slide_handle_to_eef_pos, slide_hinge_qpos,
                        door_pos, door_handle_pos, door_to_eef_pos, door_handle_to_eef_pos, door_hinge_qpos]
+            
+            slide_sensors = [slide_pos, slide_handle_pos, slide_to_eef_pos, slide_handle_to_eef_pos, slide_hinge_qpos]
+            door_sensors = [door_pos, door_handle_pos, door_to_eef_pos, door_handle_to_eef_pos, door_hinge_qpos]
+
+            # if self.mask == "slide":
+            #     sensors = slide_sensors
+            # elif self.mask == "door": 
+            #     sensors = door_sensors
+
+            print("UPDATING OBSERVABLES")
+
+
             names = [s.__name__ for s in sensors]
 
             # Create observables
@@ -456,7 +468,7 @@ class DoorSlideCIP(SingleArmEnv, CIP):
         """
         slide_hinge_qpos = self.sim.data.qpos[self.slide_hinge_qpos_addr]
         door_hinge_qpos = self.sim.data.qpos[self.door_hinge_qpos_addr]
-        return slide_hinge_qpos > 0.2 and door_hinge_qpos > todo
+        return slide_hinge_qpos > 0.2 and door_hinge_qpos > 0.3
 
     def visualize(self, vis_settings):
         """
