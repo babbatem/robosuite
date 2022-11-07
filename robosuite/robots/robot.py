@@ -204,14 +204,14 @@ class Robot(object):
 
         # Create observables for this robot
         observables = OrderedDict()
-        for name, s, active in zip(names, sensors, actives):
-            obs_name = pf + name
-            observables[obs_name] = Observable(
-                name=obs_name,
-                sensor=s,
-                sampling_rate=self.control_freq,
-                active=active,
-            )
+        # for name, s, active in zip(names, sensors, actives):
+        #     obs_name = pf + name
+        #     observables[obs_name] = Observable(
+        #         name=obs_name,
+        #         sensor=s,
+        #         sampling_rate=self.control_freq,
+        #         active=active,
+        #     )
 
         return observables
 

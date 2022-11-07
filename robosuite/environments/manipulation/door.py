@@ -351,27 +351,28 @@ class Door(SingleArmEnv):
             def handle_pos(obs_cache):
                 return self._handle_xpos
 
-            @sensor(modality=modality)
-            def door_to_eef_pos(obs_cache):
-                return (
-                    obs_cache["door_pos"] - obs_cache[f"{pf}eef_pos"]
-                    if "door_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
-                    else np.zeros(3)
-                )
+            # @sensor(modality=modality)
+            # def door_to_eef_pos(obs_cache):
+            #     return (
+            #         obs_cache["door_pos"] - obs_cache[f"{pf}eef_pos"]
+            #         if "door_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+            #         else np.zeros(3)
+            #     )
 
-            @sensor(modality=modality)
-            def handle_to_eef_pos(obs_cache):
-                return (
-                    obs_cache["handle_pos"] - obs_cache[f"{pf}eef_pos"]
-                    if "handle_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
-                    else np.zeros(3)
-                )
+            # @sensor(modality=modality)
+            # def handle_to_eef_pos(obs_cache):
+            #     return (
+            #         obs_cache["handle_pos"] - obs_cache[f"{pf}eef_pos"]
+            #         if "handle_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+            #         else np.zeros(3)
+            #     )
 
             @sensor(modality=modality)
             def hinge_qpos(obs_cache):
                 return np.array([self.sim.data.qpos[self.hinge_qpos_addr]])
 
-            sensors = [door_pos, handle_pos, door_to_eef_pos, handle_to_eef_pos, hinge_qpos]
+            # sensors = [door_pos, handle_pos, door_to_eef_pos, handle_to_eef_pos, hinge_qpos]
+            sensors = [door_pos, handle_pos, hinge_qpos]
             names = [s.__name__ for s in sensors]
 
             # Also append handle qpos if we're using a locked door version with rotatable handle
