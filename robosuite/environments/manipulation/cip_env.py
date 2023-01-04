@@ -9,6 +9,7 @@ import robosuite.utils.transform_utils as T
 from robosuite.controllers import controller_factory
 
 GRIP_NAMES = {'DoorCIP': 'Door_handle', 'DrawerCIP': 'Drawer_handle','SlideCIP': 'Slide_grip','LeverCIP': 'Lever_lever'}
+OBJECT_NAMES = {'DoorCIP': 'door', 'DrawerCIP': 'drawer','SlideCIP': 'slide','LeverCIP': 'lever'}
 
 class CIP(object):
     """
@@ -278,3 +279,7 @@ class CIP(object):
                 #print("Joint min is {min} and max is {max}, joint {qidx} violated with {j}".format(qidx=qidx, min=q_limits[0], max=q_limits[1], j=q))
                 return True
         return False
+
+    def get_obj_pose(self):
+        breakpoint()
+        return np.array(self.sim.data.body_xpos[self.object_body_ids["door"]])
