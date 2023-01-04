@@ -292,3 +292,8 @@ class CIP(object):
         obj_pose = self.get_obj_pose()
         obj_in_world = T.pose2mat(obj_pose)
         return np.matmul(np.linalg.inv(obj_in_world), grasp_in_world)
+
+    def grasp_to_world_frame(self, grasp_in_obj):
+        obj_pose = self.get_obj_pose()
+        obj_in_world = T.pose2mat(obj_pose)
+        return np.matmul(obj_in_world, grasp_in_obj)
