@@ -281,5 +281,14 @@ class CIP(object):
         return False
 
     def get_obj_pose(self):
-        breakpoint()
-        return np.array(self.sim.data.body_xpos[self.object_body_ids["door"]])
+        obj_name = OBJECT_NAMES[self.__class__.__name__]
+        obj_id = self.object_body_ids[obj_name]
+        xpos = np.array(self.sim.data.body_xpos[obj_id])
+        xmat = np.array(self.sim.data.body_xmat[obj_id]).reshape(3,3)
+        quat = T.mat2quat(xmat)
+        return xpos, quat
+
+    def grasp_to_obj_frame(self, grasp_in_world):
+        obj_pose = self.get_obj_pose()
+        obj_in_world = T.pose2mat(obj_pose)
+        return np.matmul(np.linalg.inv(obj_in_world), grasp_in_world)
