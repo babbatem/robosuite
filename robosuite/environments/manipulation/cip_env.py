@@ -9,7 +9,7 @@ import robosuite
 import robosuite.utils.transform_utils as T
 from robosuite.controllers import controller_factory
 
-from ikflow.utils import get_ik_solver
+from ikflow.utils import get_ik_solver, get_solution_errors
 
 with open("ikflow/model_descriptions.yaml", "r") as f:
     MODEL_DESCRIPTIONS = yaml.safe_load(f)
@@ -22,11 +22,17 @@ class CIP(object):
     enables functionality for resetting with grasping, safety, etc. 
     construct robosuite env as class EnvName(SingleArmEnv, CIP)
     """
-    def __init__(self, num_solver_attempts=1):
+    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50):
         super(CIP, self).__init__()
         self.solver = None
         self.setGeomIDs()
-        self.num_attempts = num_solver_attempts 
+        self.ik_pos_tol = ik_pos_tol
+        self.samples_per_pose = samples_per_pose
+        self.solver_kwargs = {
+                                "latent_noise_distribution" : "gaussian",
+                                "latent_noise_scale" : 0.75,
+                                "refine_solutions" : True
+                            }
 
     def check_gripper_contact(self, task_name):
         for contact_index in range(self.sim.data.ncon):
@@ -37,33 +43,12 @@ class CIP(object):
 
     def _setup_ik(self):
 
-        # from tracikpy import TracIKSolver
-        # self.robot_name = self.robots[0].name
-        # self.robot_urdf = pjoin(
-        #         os.path.join(robosuite.models.assets_root, "bullet_data"),
-        #         "{}_description/urdf/{}_arm.urdf".format(self.robot_name.lower(), self.robot_name.lower()),
-        #     )
-        # self.base_link_name = "panda_link0"
-        # self.ee_link_name = "panda_link8"
-        # self.solver = TracIKSolver(
-        #                             self.robot_urdf,
-        #                             self.base_link_name,
-        #                             self.ee_link_name
-        #                         )
-
+        # Build IkflowSolver and set weights
         model_name = "panda_lite"
         model_weights_filepath = MODEL_DESCRIPTIONS[model_name]["model_weights_filepath"]
         robot_name = MODEL_DESCRIPTIONS[model_name]["robot_name"]
         hparams = MODEL_DESCRIPTIONS[model_name]
-
-        # Build IkflowSolver and set weights
         ik_solver, hyper_parameters, robot_model = get_ik_solver(model_weights_filepath, hparams, robot_name)
-                
-        # Set latent distribution parameters
-        self.latent_noise_distribution = "gaussian"
-        self.latent_noise_scale = 0.75
-        self.samples_per_pose = 50
-
         self.solver = ik_solver
 
     def set_qpos_and_update(self, qpos):
@@ -83,8 +68,6 @@ class CIP(object):
 
         # set joints 
         self.set_qpos_and_update(qpos)
-
-
 
         # ensure valid
         collision_score = self.isInvalidMJ()
@@ -108,10 +91,13 @@ class CIP(object):
         qpos = None
         best_manip = -np.inf
         best_qpos = None
-        for _ in range(self.num_attempts):
-            qpos = self.solve_ik(grasp_pose)
+        candidate_qpos = self.solve_ik(grasp_pose)        
+        for qpos in candidate_qpos:
+
             if qpos is None: 
-                if verbose: print('solver returned none')
+                if verbose: 
+                    print('solver returned none')
+                    self.render()
                 continue 
 
             # set joints 
@@ -121,13 +107,16 @@ class CIP(object):
             # ensure valid
             collision_score = self.isInvalidMJ()
             if collision_score != 0:
-                self.render()
-                if verbose: print('collision')
+                if verbose: 
+                    print('collision')
+                    self.render()
                 qpos = None 
                 continue 
 
             if self.checkJointPosition(qpos):
-                if verbose: print('joint limit')
+                if verbose: 
+                    print('joint limit')
+                    self.render()
                 qpos = None 
                 continue
 
@@ -213,15 +202,13 @@ class CIP(object):
         samples, _ = self.solver.make_samples(
                 ee_pose_target,
                 self.samples_per_pose,
-                latent_noise_distribution=self.latent_noise_distribution,
-                latent_noise_scale=self.latent_noise_scale,
-                refine_solutions=True
+                **self.solver_kwargs
             )
-        # samples = samples.detach().cpu()
-        # breakpoint()
-        # breakpoint()
-        return samples.detach().cpu()[0]
         
+        # check tolerance
+        pos_error, ang_error = get_solution_errors(self.solver.robot_model, samples, ee_pose_target)
+        mask = pos_error < self.ik_pos_tol
+        return samples[mask].detach().cpu()
 
     def check_manipulability(self):
         ### Manipulability elipsoid
