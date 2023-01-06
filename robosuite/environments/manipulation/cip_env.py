@@ -79,10 +79,16 @@ class CIP(object):
 
         return True
 
-    def reset_to_grasp(self, grasp_pose, wide=False, optimal_ik=False, verbose=False):
+    def reset_to_grasp(self, grasp_pose, wide=False, optimal_ik=False, verbose=False, frame=None):
 
         if self.solver is None: 
             self._setup_ik()
+
+        # maybe change frame
+        if frame is not None: 
+            assert frame.shape == (4,4)
+            grasp_pose = frame @ grasp_pose 
+
       
         # override initial gripper qpos for wide grasp 
         if wide:
