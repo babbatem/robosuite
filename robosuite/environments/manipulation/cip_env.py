@@ -220,7 +220,7 @@ class CIP(object):
 
         # mask 
         mask = np.logical_and(jlim_mask, error_mask)
-        return samples[mask]
+        return samples[mask].detach().cpu().numpy()
 
     def check_manipulability(self):
         ### Manipulability elipsoid
