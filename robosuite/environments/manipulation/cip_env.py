@@ -98,13 +98,20 @@ class CIP(object):
         best_manip = -np.inf
         best_qpos = None
         candidate_qpos = self.solve_ik(grasp_pose)        
+        if len(candidate_qpos) == 0: 
+            if verbose: 
+                print('solver returned none')
+                self.render()
+            return False 
+
         for qpos in candidate_qpos:
 
-            if qpos is None: 
+            if self.checkJointPosition(qpos):
                 if verbose: 
-                    print('solver returned none')
+                    print('joint limit')
                     self.render()
-                continue 
+                qpos = None 
+                continue
 
             # set joints 
             self.sim.data.qpos[:7] = qpos
@@ -118,13 +125,6 @@ class CIP(object):
                     self.render()
                 qpos = None 
                 continue 
-
-            if self.checkJointPosition(qpos):
-                if verbose: 
-                    print('joint limit')
-                    self.render()
-                qpos = None 
-                continue
 
             # maybe keep qpos w/ highest manipulability score 
             if not optimal_ik: 
@@ -210,11 +210,17 @@ class CIP(object):
                 self.samples_per_pose,
                 **self.solver_kwargs
             )
+
+        # check joint limits 
+        jlim_mask = np.logical_not(list(map(self.checkJointPosition, samples)))
         
         # check tolerance
         pos_error, ang_error = get_solution_errors(self.solver.robot_model, samples, ee_pose_target)
-        mask = pos_error < self.ik_pos_tol
-        return samples[mask].detach().cpu()
+        error_mask = pos_error < self.ik_pos_tol
+
+        # mask 
+        mask = np.logical_and(jlim_mask, error_mask)
+        return samples[mask]
 
     def check_manipulability(self):
         ### Manipulability elipsoid
