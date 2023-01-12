@@ -208,6 +208,7 @@ class OperationalSpaceController(Controller):
 
         self.relative_ori = np.zeros(3)
         self.ori_ref = None
+        self.torque_hist = [np.array([0, 0, 0, 0, 0, 0, 0])]
 
     def set_goal(self, action, set_pos=None, set_ori=None):
         """
@@ -428,6 +429,10 @@ class OperationalSpaceController(Controller):
             if self.unsafe2:
                 self.torques = safe_null_torques
                 self.torques = self.clip_torques(self.torques)
+                torque_diff = self.torques - self.torque_hist[-1]
+                torque_diff = np.clip(torque_diff, [-10, -10, -10, -10, -10, -5, -5], [10, 10, 10, 10, 10, 5, 5])
+                self.torques = self.torque_hist[-1] + torque_diff
+                self.torque_hist.append(self.torques)
                 super().run_controller()
                 #print('===============AGRESSIVE SAFETY================')
                 return self.torques
@@ -448,7 +453,11 @@ class OperationalSpaceController(Controller):
             else:
                 self.torques += null_torques_initial
         self.torques = self.clip_torques(self.torques)
+        torque_diff = self.torques - self.torque_hist[-1]
+        torque_diff = np.clip(torque_diff, [-10, -10, -10, -10, -10, -5, -5], [10, 10, 10, 10, 10, 5, 5])
+        self.torques = self.torque_hist[-1] + torque_diff
         # Always run superclass call for any cleanups at the end
+        self.torque_hist.append(self.torques)
         super().run_controller()
 
         return self.torques
