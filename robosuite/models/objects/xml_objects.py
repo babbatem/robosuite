@@ -386,6 +386,22 @@ class DrawerObject(MujocoXMLObject):
         dic.update({"handle": self.naming_prefix + "handle"})
         return dic
 
+class BoxObject(MujocoXMLObject):
+    """
+    Basic box object (used in Basic Box)
+
+    Args:
+    """
+
+    def __init__(self, name): 
+        xml_path = "objects/lever.xml"
+        #print(xml_path_completion(xml_path))
+        super().__init__(
+            xml_path_completion(xml_path), name=name, joints=None, obj_type="all", duplicate_collision_geoms=True
+        )
+        self.lever_body = self.naming_prefix + "link_1"
+        self.lever_joint = self.naming_prefix + "joint_1"
+
         
 
 
