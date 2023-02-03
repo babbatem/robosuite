@@ -44,7 +44,12 @@ class DoorCIP(Door, CIP):
                  camera_depths=False,
                  camera_segmentations=None,  # {None, instance, class, element}
                  task_config=None,
-                 ee_fixed_to_handle=False):
+                 ee_fixed_to_handle=False,
+                 p_constant=1, 
+                 m_constant=1, 
+                 ttt_constant = 1, 
+                 manip_strategy = 'old'
+    ):
 
         self.ee_fixed_to_handle = ee_fixed_to_handle
         use_latch = False
@@ -80,7 +85,10 @@ class DoorCIP(Door, CIP):
                       camera_depths,
                       camera_segmentations=camera_segmentations)  # {None, instance, class, element}
 
-        CIP.__init__(self)
+        CIP.__init__(self, p_constant=p_constant, 
+                     m_constant=m_constant, 
+                     ttt_constant = ttt_constant, 
+                     manip_strategy = manip_strategy)
 
     def _reset_internal(self):
         super()._reset_internal()

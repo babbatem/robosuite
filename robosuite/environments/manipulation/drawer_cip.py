@@ -161,7 +161,11 @@ class DrawerCIP(SingleArmEnv, CIP):
         camera_segmentations=None,  # {None, instance, class, element}
         renderer="mujoco",
         renderer_config=None,
-        ee_fixed_to_handle=False
+        ee_fixed_to_handle=False,
+        p_constant=1, 
+        m_constant=1, 
+        ttt_constant = 1, 
+        manip_strategy = 'old'
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
@@ -206,7 +210,10 @@ class DrawerCIP(SingleArmEnv, CIP):
             renderer=renderer,
             renderer_config=renderer_config,
         )
-        CIP.__init__(self)
+        CIP.__init__(self, p_constant=p_constant, 
+                     m_constant=m_constant, 
+                     ttt_constant = ttt_constant, 
+                     manip_strategy = manip_strategy)
 
     def reward(self, action=None):
         """

@@ -2,6 +2,10 @@ import os
 from os.path import join as pjoin
 import math 
 
+from os import listdir
+from os.path import isfile, join
+import pickle 
+
 import numpy as np
 import yaml 
 
@@ -22,7 +26,7 @@ class CIP(object):
     enables functionality for resetting with grasping, safety, etc. 
     construct robosuite env as class EnvName(SingleArmEnv, CIP)
     """
-    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50):
+    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old'):
         super(CIP, self).__init__()
         self.solver = None
         self.setGeomIDs()
@@ -33,6 +37,57 @@ class CIP(object):
                                 "latent_noise_scale" : 0.75,
                                 "refine_solutions" : True
                             }
+
+        print(self.__class__.__name__)
+        self.task_mean = self.calculate_task_vector()
+        self.p_constant = p_constant
+        self.m_constant = m_constant
+        self.ttt_constant = ttt_constant
+        self.manip_strategy = manip_strategy
+        print('P_constant')
+        print(self.p_constant)
+        print('M_constant')
+        print(self.m_constant)
+        print('ttt_constant')
+        print(self.ttt_constant)
+        print('Manipulation strategy')
+        print(self.manip_strategy)
+
+
+    def calculate_task_vector(self):
+        demos_path = "/home/mtuluhan/Desktop/CIPS/motor_skills/auto_demos/" + str(self.__class__.__name__)
+        demo_files = [f for f in listdir(demos_path) if isfile(join(demos_path, f))]
+        folder_len = len(demo_files)
+        #demo_file = demo_files[np.random.randint(folder_len-1)]
+        outer_loop_actions = []
+        for demo_file in demo_files:
+            full_demo_path  = demos_path + "/" + demo_file
+            demo_data = pickle.load(open(full_demo_path,"rb"), encoding='latin1')
+
+            s0, a, r, done_p, sp = demo_data[0]
+
+            actions = []
+
+            for i, transition_tuple in enumerate(demo_data):
+                s, a, r, done_p, sp = transition_tuple
+                a = a[0:6]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
+                mag = np.sqrt(a.dot(a))
+                actions.append(a/mag)
+            actions = np.array(actions)
+            action_mean = np.mean(actions, axis = 0)
+            action_mean /= np.sqrt(action_mean.dot(action_mean))
+            # print('action_mean')
+            # print(action_mean)
+            outer_loop_actions.append(action_mean)
+        outer_loop_actions = np.array(outer_loop_actions)
+        outer_action_mean = np.mean(outer_loop_actions, axis = 0)
+        outer_action_mean /= np.sqrt(outer_action_mean.dot(outer_action_mean))
+        # print('Outer action mean')
+        # print(outer_action_mean)
+        # print(np.sqrt(outer_action_mean.dot(outer_action_mean)))
+
+        return outer_action_mean
+
 
     def check_gripper_contact(self, task_name):
         for contact_index in range(self.sim.data.ncon):
@@ -121,7 +176,7 @@ class CIP(object):
             collision_score = self.isInvalidMJ()
             if collision_score != 0:
                 if verbose: 
-                    print('collision')
+                    #print('collision')
                     self.render()
                 qpos = None 
                 continue 
@@ -132,7 +187,12 @@ class CIP(object):
                 break
 
             else:
-                w,p,wp = self.check_manipulability()
+                if self.manip_strategy == 'ellipsoid':
+                    w,p,wp = self.check_manipulability_ellipsoid()
+                elif self.manip_strategy == 'paper':
+                    w,p,wp = self.check_manipulability_paper()
+                else:
+                    w,p,wp = self.check_manipulability_old()
                 if wp > best_manip:
                     best_manip = wp 
                     best_qpos = qpos
@@ -222,8 +282,82 @@ class CIP(object):
         mask = np.logical_and(jlim_mask, error_mask)
         return samples[mask].detach().cpu().numpy()
 
-    def check_manipulability(self):
+
+    def check_manipulability_ellipsoid(self):
         ### Manipulability elipsoid
+        # Use jacobian to translate joint velocities to end effector velocities.
+        Jp = self.robots[0].sim.data.get_body_jacp(self.robots[0].robot_model.eef_name).reshape((3, -1))
+        Jp_joint = Jp[:, self.robots[0]._ref_joint_vel_indexes]
+
+        Jr = self.robots[0].sim.data.get_body_jacr(self.robots[0].robot_model.eef_name).reshape((3, -1))
+        Jr_joint = Jr[:, self.robots[0]._ref_joint_vel_indexes]
+
+        J = np.concatenate((Jp,Jr),axis=0)
+
+        JJt = np.matmul(J,J.transpose())
+        Jdet = np.linalg.det(JJt)
+        w = math.sqrt(Jdet)
+
+
+        ########### NEW ###########
+        invJJt = np.linalg.inv(JJt)
+        ttt = 1 / np.dot(np.dot(self.task_mean[None], invJJt), self.task_mean[None].transpose())[0][0]
+        ttt = np.sqrt(ttt)
+        ### Penalization for distance to joint limits
+        p = 1
+
+        k = 1 #hyperparameter for adjust behavior near joint limits
+        joint_total = 1
+        for (qidx, (q, q_limits)) in enumerate(
+            zip(self.robots[0].sim.data.qpos[self.robots[0]._ref_joint_pos_indexes], self.robots[0].sim.model.jnt_range[self.robots[0]._ref_joint_indexes])
+        ):
+            joint_total *= (q - q_limits[0])*(q_limits[1]-q)/np.square(q_limits[1]-q_limits[0])
+        p -= math.exp(-k*joint_total)
+
+        return(w,p,np.power(w,self.m_constant) * np.power(p,self.p_constant) * np.power(ttt,self.ttt_constant))
+
+
+    def check_manipulability_paper(self):
+        ### Manipulability paper
+        # Use jacobian to translate joint velocities to end effector velocities.
+        Jp = self.robots[0].sim.data.get_body_jacp(self.robots[0].robot_model.eef_name).reshape((3, -1))
+        Jp_joint = Jp[:, self.robots[0]._ref_joint_vel_indexes]
+
+        Jr = self.robots[0].sim.data.get_body_jacr(self.robots[0].robot_model.eef_name).reshape((3, -1))
+        Jr_joint = Jr[:, self.robots[0]._ref_joint_vel_indexes]
+
+        J = np.concatenate((Jp,Jr),axis=0)
+
+        JJt = np.matmul(J,J.transpose())
+        Jdet = np.linalg.det(JJt)
+        w = math.sqrt(Jdet)
+
+
+        #### new
+ 
+        ttt = np.dot(J.transpose(), self.task_mean[None].transpose())[:,0]
+
+        ttt = np.sqrt(ttt.dot(ttt))
+        
+        #### new
+
+
+        ### Penalization for distance to joint limits
+        p = 1
+
+        k = 1 #hyperparameter for adjust behavior near joint limits
+        joint_total = 1
+        for (qidx, (q, q_limits)) in enumerate(
+            zip(self.robots[0].sim.data.qpos[self.robots[0]._ref_joint_pos_indexes], self.robots[0].sim.model.jnt_range[self.robots[0]._ref_joint_indexes])
+        ):
+            joint_total *= (q - q_limits[0])*(q_limits[1]-q)/np.square(q_limits[1]-q_limits[0])
+        p -= math.exp(-k*joint_total)
+
+        return(w,p,np.power(w,self.m_constant) * np.power(p,self.p_constant) * np.power(ttt,self.ttt_constant))
+
+    def check_manipulability_old(self):
+        
+        ### Manipulability old
         # Use jacobian to translate joint velocities to end effector velocities.
         Jp = self.robots[0].sim.data.get_body_jacp(self.robots[0].robot_model.eef_name).reshape((3, -1))
         Jp_joint = Jp[:, self.robots[0]._ref_joint_vel_indexes]
@@ -245,10 +379,10 @@ class CIP(object):
         for (qidx, (q, q_limits)) in enumerate(
             zip(self.robots[0].sim.data.qpos[self.robots[0]._ref_joint_pos_indexes], self.robots[0].sim.model.jnt_range[self.robots[0]._ref_joint_indexes])
         ):
-            joint_total *= (q - q_limits[0])*(q_limits[1]-q)/(q_limits[1]-q_limits[0])
+            joint_total *= (q - q_limits[0])*(q_limits[1]-q)/np.square(q_limits[1]-q_limits[0])
         p -= math.exp(-k*joint_total)
 
-        return(w,p,w*p)
+        return(w,p,np.power(w,self.w_constant) * np.power(p,self.p_constant))
 
     def setGeomIDs(self):
         self.robot_geom_ids = []
