@@ -382,7 +382,7 @@ class CIP(object):
             joint_total *= (q - q_limits[0])*(q_limits[1]-q)/np.square(q_limits[1]-q_limits[0])
         p -= math.exp(-k*joint_total)
 
-        return(w,p,np.power(w,self.w_constant) * np.power(p,self.p_constant))
+        return(w,p,np.power(w,self.m_constant) * np.power(p,self.p_constant))
 
     def setGeomIDs(self):
         self.robot_geom_ids = []
