@@ -55,7 +55,7 @@ class CIP(object):
 
 
     def calculate_task_vector(self):
-        demos_path = "/home/mtuluhan/Desktop/CIPS/motor_skills/auto_demos/" + str(self.__class__.__name__)
+        demos_path = "./auto_demos/" + str(self.__class__.__name__)
         demo_files = [f for f in listdir(demos_path) if isfile(join(demos_path, f))]
         folder_len = len(demo_files)
         #demo_file = demo_files[np.random.randint(folder_len-1)]
