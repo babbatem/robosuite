@@ -15,7 +15,8 @@ from robosuite.controllers import controller_factory
 
 from ikflow.utils import get_ik_solver, get_solution_errors
 
-with open("ikflow/model_descriptions.yaml", "r") as f:
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+with open(f"{cur_dir}/ikflow/model_descriptions.yaml", "r") as f:
     MODEL_DESCRIPTIONS = yaml.safe_load(f)
 
 GRIP_NAMES = {'DoorCIP': 'Door_handle', 'DrawerCIP': 'Drawer_handle','SlideCIP': 'Slide_grip','LeverCIP': 'Lever_lever'}
@@ -39,7 +40,7 @@ class CIP(object):
                             }
 
         print(self.__class__.__name__)
-        self.task_mean = self.calculate_task_vector()
+        # self.task_mean = self.calculate_task_vector()
         self.p_constant = p_constant
         self.m_constant = m_constant
         self.ttt_constant = ttt_constant
