@@ -13,10 +13,11 @@ import robosuite
 import robosuite.utils.transform_utils as T
 from robosuite.controllers import controller_factory
 
+import ikflow 
 from ikflow.utils import get_ik_solver, get_solution_errors
 
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-with open(f"{cur_dir}/ikflow/model_descriptions.yaml", "r") as f:
+ikflow_dir = os.path.dirname(os.path.abspath(ikflow.__file__))
+with open(f"{ikflow_dir}/model_descriptions.yaml", "r") as f:
     MODEL_DESCRIPTIONS = yaml.safe_load(f)
 
 GRIP_NAMES = {'DoorCIP': 'Door_handle', 'DrawerCIP': 'Drawer_handle','SlideCIP': 'Slide_grip','LeverCIP': 'Lever_lever'}
@@ -102,6 +103,7 @@ class CIP(object):
         # Build IkflowSolver and set weights
         model_name = "panda_lite"
         model_weights_filepath = MODEL_DESCRIPTIONS[model_name]["model_weights_filepath"]
+        model_weights_filepath = f"{ikflow_dir}/{model_weights_filepath}"
         robot_name = MODEL_DESCRIPTIONS[model_name]["robot_name"]
         hparams = MODEL_DESCRIPTIONS[model_name]
         ik_solver, hyper_parameters, robot_model = get_ik_solver(model_weights_filepath, hparams, robot_name)
