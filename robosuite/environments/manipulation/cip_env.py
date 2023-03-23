@@ -162,7 +162,6 @@ class CIP(object):
         # print(grasp_pose)
         # print('Closest')
         # print(self.grasp_data_list[indice])
-
         closest_trajectory = self.demo_data_list[indice]
 
         actions = []
