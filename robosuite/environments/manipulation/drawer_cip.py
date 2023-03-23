@@ -324,9 +324,9 @@ class DrawerCIP(SingleArmEnv, CIP):
             self.placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.drawer,
-                x_range=[-0.01, 0.01], 
-                y_range=[-0.15,-0.13],
-                rotation=(-np.pi/2.0 - 0.125, -np.pi/2.0 + 0.125), 
+                x_range=[0, 0], #No randomization
+                y_range=[-0.14,-0.14], #No randomization
+                rotation=(-np.pi/2.0 , -np.pi/2.0 ), #No randomization
                 rotation_axis="z",
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,

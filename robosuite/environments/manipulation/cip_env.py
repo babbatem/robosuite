@@ -8,6 +8,7 @@ import pickle
 
 import numpy as np
 import yaml 
+from numpy import linalg as LA
 
 import robosuite
 import robosuite.utils.transform_utils as T
@@ -53,6 +54,43 @@ class CIP(object):
         print('Manipulation strategy')
         print(self.manip_strategy)
 
+        self.demo_data_list, self.grasp_data_list = self.get_task_demos_and_grasps()
+        print('len_grasp_data_list')
+        print(len(self.grasp_data_list))
+        stacked_arrays = np.stack(self.grasp_data_list)
+        reshaped_array = stacked_arrays.reshape(len(self.grasp_data_list), -1)
+        unique_rows, indices = np.unique(reshaped_array, axis = 0, return_index = True)
+        print("unique_rows")
+        print(unique_rows.shape[0])
+
+
+    def get_task_demos_and_grasps(self):
+
+        demos_path = "./auto_demos/" + str(self.__class__.__name__)
+        demo_files = [f for f in listdir(demos_path) if isfile(join(demos_path, f))]
+        folder_len = len(demo_files)
+        print("folder_len")
+        print(folder_len)
+        grasps_path = "./auto_demos/" + str(self.__class__.__name__) + "_grasps"
+        grasp_files = [f for f in listdir(grasps_path) if isfile(join(grasps_path, f))]
+        grasp_folder_len = len(grasp_files)
+        print("grasp_folder_len")
+        print(grasp_folder_len)
+
+        demo_data_list = []
+        grasp_data_list = []
+
+        for zz in range(len(demo_files)):
+            demo_file = demo_files[zz]
+            grasp_file = grasp_files[zz]
+            full_demo_path  = demos_path + "/" + demo_file
+            full_grasp_path = grasps_path + "/" + grasp_file
+            demo_data = pickle.load(open(full_demo_path,"rb"), encoding='latin1')
+            grasp_data = pickle.load(open(full_grasp_path,"rb"), encoding='latin1')
+            demo_data_list.append(demo_data)
+            grasp_data_list.append(grasp_data)
+
+        return demo_data_list, grasp_data_list
 
     def calculate_task_vector(self):
         demos_path = "./auto_demos/" + str(self.__class__.__name__)
@@ -65,7 +103,7 @@ class CIP(object):
             demo_data = pickle.load(open(full_demo_path,"rb"), encoding='latin1')
 
             s0, a, r, done_p, sp = demo_data[0]
-
+            
             actions = []
 
             for i, transition_tuple in enumerate(demo_data):
@@ -87,6 +125,97 @@ class CIP(object):
         # print(np.sqrt(outer_action_mean.dot(outer_action_mean)))
 
         return outer_action_mean
+
+    def closest (self, num, arr):
+        curr = arr[0]
+        for val in arr:
+            new = num - val
+            old = num - curr
+            if np.sqrt(new.dot(new)) < np.sqrt(old.dot(old)):
+                curr = val
+        return curr
+
+
+    def calculate_demo_specific_task_vector(self,grasp_pose):
+
+        # print("Grasp_pose")
+        # print(grasp_pose)
+
+        closest = self.grasp_data_list[0]
+        indice = 0
+        for zz in range(len(self.grasp_data_list)):
+            diff_new = self.grasp_data_list[zz] - grasp_pose
+            # print('A')
+            # print(self.grasp_data_list[zz])
+            # print('B')
+            # print(grasp_pose)
+            # print('C')
+            # print(diff_new)
+            diff_old = closest - grasp_pose
+            new_dist = LA.norm(diff_new, 'fro')
+            old_dist = LA.norm(diff_old, 'fro')
+            if new_dist < old_dist:
+                closest = self.grasp_data_list[zz]
+                indice = zz
+
+        # print("Grasp_pose")
+        # print(grasp_pose)
+        # print('Closest')
+        # print(self.grasp_data_list[indice])
+
+        closest_trajectory = self.demo_data_list[indice]
+
+        actions = []
+        actions2 = []
+
+        for i, transition_tuple in enumerate(closest_trajectory):
+            s, a, r, done_p, sp = transition_tuple
+            a = a[0:6]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
+            actions2.append(a)
+            mag = np.sqrt(a.dot(a))
+            actions.append(a/mag)
+        actions = np.array(actions)
+        action_mean = np.mean(actions, axis = 0)
+        action_mean /= np.sqrt(action_mean.dot(action_mean))
+
+        #print(self.grasp_data_list)
+
+        #breakpoint()
+        #     demo_file = demo_files[zz]
+        #     full_demo_path  = demos_path + "/" + demo_file
+        #     demo_data = pickle.load(open(full_demo_path,"rb"), encoding='latin1')
+        #     s0, a, r, done_p, sp = demo_data[0]
+
+        #     actions = []
+        #     actions2 = []
+        #     start_positions.append(s0[:7])
+
+        #     for i, transition_tuple in enumerate(demo_data):
+        #         s, a, r, done_p, sp = transition_tuple
+        #         a = a[0:6]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
+        #         actions2.append(a)
+        #         mag = np.sqrt(a.dot(a))
+        #         actions.append(a/mag)
+        #     actions = np.array(actions)
+        #     action_mean = np.mean(actions, axis = 0)
+        #     action_mean /= np.sqrt(action_mean.dot(action_mean))
+        #     #print('Len')
+        #     #print(len(actions2))
+        #     # print('action_mean')
+        #     # print(action_mean)
+        #     outer_loop_actions.append(action_mean)
+        # outer_loop_actions = np.array(outer_loop_actions)
+        # outer_action_mean = np.mean(outer_loop_actions, axis = 0)
+        # outer_action_mean /= np.sqrt(outer_action_mean.dot(outer_action_mean))
+
+        # closest_start = self.closest(grasp_pose, start_positions)
+
+        # # print('Outer action mean')
+        # # print(outer_action_mean)
+        # # print(np.sqrt(outer_action_mean.dot(outer_action_mean)))
+
+        # return np.array(actions2)
+        return action_mean
 
 
     def check_gripper_contact(self, task_name):
@@ -135,7 +264,7 @@ class CIP(object):
         return True
 
     def reset_to_grasp(self, grasp_pose, wide=False, optimal_ik=False, verbose=False, frame=None):
-
+        grasp_pose_old = grasp_pose
         if self.solver is None: 
             self._setup_ik()
 
@@ -152,7 +281,10 @@ class CIP(object):
         qpos = None
         best_manip = -np.inf
         best_qpos = None
-        candidate_qpos = self.solve_ik(grasp_pose)        
+        candidate_qpos, ee_target = self.solve_ik(grasp_pose)
+        self.task_mean =  self.calculate_demo_specific_task_vector(grasp_pose_old)
+        print("Self_task_mean")
+        print(self.task_mean)
         if len(candidate_qpos) == 0: 
             if verbose: 
                 print('solver returned none')
@@ -280,7 +412,7 @@ class CIP(object):
 
         # mask 
         mask = np.logical_and(jlim_mask, error_mask)
-        return samples[mask].detach().cpu().numpy()
+        return samples[mask].detach().cpu().numpy(), ee_pose_target
 
 
     def check_manipulability_ellipsoid(self):
