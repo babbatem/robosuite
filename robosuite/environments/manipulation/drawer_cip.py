@@ -414,14 +414,16 @@ class DrawerCIP(SingleArmEnv, CIP):
     def _reset_internal(self):
         super()._reset_internal()
 
-        # Sample from the placement initializer for all objects
-        object_placements = self.placement_initializer.sample()
+        if not self.deterministic_reset:
 
-        # We know we're only setting a single object (the drawer), so specifically set its pose
-        drawer_pos, drawer_quat, _ = object_placements[self.drawer.name]
-        drawer_body_id = self.sim.model.body_name2id(self.drawer.root_body)
-        self.sim.model.body_pos[drawer_body_id] = drawer_pos
-        self.sim.model.body_quat[drawer_body_id] = drawer_quat
+            # Sample from the placement initializer for all objects
+            object_placements = self.placement_initializer.sample()
+
+            # We know we're only setting a single object (the drawer), so specifically set its pose
+            drawer_pos, drawer_quat, _ = object_placements[self.drawer.name]
+            drawer_body_id = self.sim.model.body_name2id(self.drawer.root_body)
+            self.sim.model.body_pos[drawer_body_id] = drawer_pos
+            self.sim.model.body_quat[drawer_body_id] = drawer_quat
         self.handle_current_progress = self.sim.data.qpos[self.slider_qpos_addr]
 
     def _check_success(self):

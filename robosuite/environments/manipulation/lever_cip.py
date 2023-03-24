@@ -393,14 +393,16 @@ class LeverCIP(SingleArmEnv, CIP):
     def _reset_internal(self):
         super()._reset_internal()
 
-        # Sample from the placement initializer for all objects
-        object_placements = self.placement_initializer.sample()
+        if not self.deterministic_reset:
 
-        # We know we're only setting a single object (the door), so specifically set its pose
-        lever_pos, lever_quat, _ = object_placements[self.lever.name]
-        lever_body_id = self.sim.model.body_name2id(self.lever.root_body)
-        self.sim.model.body_pos[lever_body_id] = lever_pos
-        self.sim.model.body_quat[lever_body_id] = lever_quat
+            # Sample from the placement initializer for all objects
+            object_placements = self.placement_initializer.sample()
+
+            # We know we're only setting a single object (the door), so specifically set its pose
+            lever_pos, lever_quat, _ = object_placements[self.lever.name]
+            lever_body_id = self.sim.model.body_name2id(self.lever.root_body)
+            self.sim.model.body_pos[lever_body_id] = lever_pos
+            self.sim.model.body_quat[lever_body_id] = lever_quat
         
         self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
 
