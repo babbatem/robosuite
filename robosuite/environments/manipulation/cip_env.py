@@ -27,7 +27,7 @@ class CIP(object):
     enables functionality for resetting with grasping, safety, etc. 
     construct robosuite env as class EnvName(SingleArmEnv, CIP)
     """
-    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old'):
+    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old', manipulability_flip = 'superaverage'):
         super(CIP, self).__init__()
         self.solver = None
         self.setGeomIDs()
@@ -45,6 +45,7 @@ class CIP(object):
         self.m_constant = m_constant
         self.ttt_constant = ttt_constant
         self.manip_strategy = manip_strategy
+        self.manipulability_flip = manipulability_flip
         print('P_constant')
         print(self.p_constant)
         print('M_constant')
@@ -281,9 +282,18 @@ class CIP(object):
         best_manip = -np.inf
         best_qpos = None
         candidate_qpos, ee_target = self.solve_ik(grasp_pose)
-        self.task_mean =  self.calculate_demo_specific_task_vector(grasp_pose_old)
-        print("Self_task_mean")
-        print(self.task_mean)
+        print("manipulability_flip")
+        print(self.manipulability_flip)
+        if self.manipulability_flip == "demoaverage":
+            self.task_mean =  self.calculate_demo_specific_task_vector(grasp_pose_old)
+            print("Self_task_mean_demoaverage")
+            print(self.task_mean)
+        else:
+            assert self.manipulability_flip == "superaverage"
+            self.task_mean =  self.calculate_task_vector()
+            print("Self_task_mean_superaverage")
+            print(self.task_mean)
+
         if len(candidate_qpos) == 0: 
             if verbose: 
                 print('solver returned none')
