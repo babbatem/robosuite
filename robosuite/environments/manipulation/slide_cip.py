@@ -381,12 +381,17 @@ class SlideCIP(SingleArmEnv, CIP):
 
             # Sample from the placement initializer for all objects
             object_placements = self.placement_initializer.sample()
-
-            # We know we're only setting a single object (the door), so specifically set its pose
             slide_pos, slide_quat, _ = object_placements[self.slide.name]
-            slide_body_id = self.sim.model.body_name2id(self.slide.root_body)
-            self.sim.model.body_pos[slide_body_id] = slide_pos
-            self.sim.model.body_quat[slide_body_id] = slide_quat
+
+        else:
+            slide_pos = (-0.6, -0.5, 0.8)
+            slide_quat = [0.70710678,  0.,  0., -0.70710678]
+
+
+        # We know we're only setting a single object (the door), so specifically set its pose  
+        slide_body_id = self.sim.model.body_name2id(self.slide.root_body)
+        self.sim.model.body_pos[slide_body_id] = slide_pos
+        self.sim.model.body_quat[slide_body_id] = slide_quat
 
         self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
 

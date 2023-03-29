@@ -408,9 +408,14 @@ class Door(SingleArmEnv):
 
             # We know we're only setting a single object (the door), so specifically set its pose
             door_pos, door_quat, _ = object_placements[self.door.name]
-            door_body_id = self.sim.model.body_name2id(self.door.root_body)
-            self.sim.model.body_pos[door_body_id] = door_pos
-            self.sim.model.body_quat[door_body_id] = door_quat
+
+        else:
+            door_pos = (-0.12, -0.35, 1.1)
+            door_quat = [0.70710678,  0.,  0., -0.70710678]
+        
+        door_body_id = self.sim.model.body_name2id(self.door.root_body)
+        self.sim.model.body_pos[door_body_id] = door_pos
+        self.sim.model.body_quat[door_body_id] = door_quat
 
     def _check_success(self):
         """

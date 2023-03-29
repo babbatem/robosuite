@@ -421,9 +421,14 @@ class DrawerCIP(SingleArmEnv, CIP):
 
             # We know we're only setting a single object (the drawer), so specifically set its pose
             drawer_pos, drawer_quat, _ = object_placements[self.drawer.name]
-            drawer_body_id = self.sim.model.body_name2id(self.drawer.root_body)
-            self.sim.model.body_pos[drawer_body_id] = drawer_pos
-            self.sim.model.body_quat[drawer_body_id] = drawer_quat
+
+        else:
+            drawer_pos = (-0.6, -1.14, 0.8)
+            drawer_quat = [0.70710678,  0.,  0., -0.70710678]
+
+        drawer_body_id = self.sim.model.body_name2id(self.drawer.root_body)
+        self.sim.model.body_pos[drawer_body_id] = drawer_pos
+        self.sim.model.body_quat[drawer_body_id] = drawer_quat
         self.handle_current_progress = self.sim.data.qpos[self.slider_qpos_addr]
 
     def _check_success(self):

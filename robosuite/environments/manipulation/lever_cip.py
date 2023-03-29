@@ -400,9 +400,15 @@ class LeverCIP(SingleArmEnv, CIP):
 
             # We know we're only setting a single object (the door), so specifically set its pose
             lever_pos, lever_quat, _ = object_placements[self.lever.name]
-            lever_body_id = self.sim.model.body_name2id(self.lever.root_body)
-            self.sim.model.body_pos[lever_body_id] = lever_pos
-            self.sim.model.body_quat[lever_body_id] = lever_quat
+
+        else:
+            lever_pos = (-0.6, -0.5, 1.3)
+            lever_quat = [0.70710678,  0.,  0., -0.70710678]
+
+
+        lever_body_id = self.sim.model.body_name2id(self.lever.root_body)
+        self.sim.model.body_pos[lever_body_id] = lever_pos
+        self.sim.model.body_quat[lever_body_id] = lever_quat
         
         self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
 
