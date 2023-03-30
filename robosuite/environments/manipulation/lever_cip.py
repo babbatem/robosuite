@@ -131,7 +131,8 @@ class LeverCIP(SingleArmEnv, CIP):
         m_constant=1, 
         ttt_constant = 1, 
         manip_strategy = 'old',
-        manipulability_flip = 'superaverage'
+        manipulability_flip = 'superaverage',
+        follow_demo = False
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
@@ -181,7 +182,8 @@ class LeverCIP(SingleArmEnv, CIP):
                      m_constant=m_constant, 
                      ttt_constant = ttt_constant, 
                      manip_strategy = manip_strategy,
-                     manipulability_flip = manipulability_flip)
+                     manipulability_flip = manipulability_flip,
+                     follow_demo = follow_demo)
 
     def reward(self, action=None):
         """
@@ -406,6 +408,23 @@ class LeverCIP(SingleArmEnv, CIP):
         
         self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
 
+
+    def _reset_internal_hacky(self):
+        super()._reset_internal()
+
+        # Sample from the placement initializer for all objects
+        object_placements = self.placement_initializer.sample()
+
+        # We know we're only setting a single object (the door), so specifically set its pose
+        lever_pos, lever_quat, _ = object_placements[self.lever.name]
+        lever_body_id = self.sim.model.body_name2id(self.lever.root_body)
+        lever_pos = list(lever_pos)
+        lever_pos[0] -= 1.
+        lever_pos = tuple(lever_pos)
+        self.sim.model.body_pos[lever_body_id] = lever_pos
+        self.sim.model.body_quat[lever_body_id] = lever_quat
+        
+        self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
 
     def _check_success(self):
         """

@@ -412,6 +412,28 @@ class Door(SingleArmEnv):
             self.sim.model.body_pos[door_body_id] = door_pos
             self.sim.model.body_quat[door_body_id] = door_quat
 
+
+    def _reset_internal_hacky(self):
+        """
+        Resets simulation internal configurations.
+        """
+        super()._reset_internal()
+
+        # Reset all object positions using initializer sampler if we're not directly loading from an xml
+        if not self.deterministic_reset:
+
+            # Sample from the placement initializer for all objects
+            object_placements = self.placement_initializer.sample()
+
+            # We know we're only setting a single object (the door), so specifically set its pose
+            door_pos, door_quat, _ = object_placements[self.door.name]
+            door_body_id = self.sim.model.body_name2id(self.door.root_body)
+            door_pos = list(door_pos)
+            door_pos[0] -= 1.
+            door_pos = tuple(door_pos)
+            self.sim.model.body_pos[door_body_id] = door_pos
+            self.sim.model.body_quat[door_body_id] = door_quat
+
     def _check_success(self):
         """
         Check if door has been opened.

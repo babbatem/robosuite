@@ -131,7 +131,8 @@ class SlideCIP(SingleArmEnv, CIP):
         m_constant=1, 
         ttt_constant = 1, 
         manip_strategy = 'old',
-        manipulability_flip = 'superaverage'
+        manipulability_flip = 'superaverage',
+        follow_demo = False
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
@@ -180,7 +181,8 @@ class SlideCIP(SingleArmEnv, CIP):
                      m_constant=m_constant, 
                      ttt_constant = ttt_constant, 
                      manip_strategy = manip_strategy,
-                     manipulability_flip = manipulability_flip)
+                     manipulability_flip = manipulability_flip,
+                     follow_demo = follow_demo)
 
     def reward(self, action=None):
         """
@@ -385,6 +387,23 @@ class SlideCIP(SingleArmEnv, CIP):
         # We know we're only setting a single object (the door), so specifically set its pose
         slide_pos, slide_quat, _ = object_placements[self.slide.name]
         slide_body_id = self.sim.model.body_name2id(self.slide.root_body)
+        self.sim.model.body_pos[slide_body_id] = slide_pos
+        self.sim.model.body_quat[slide_body_id] = slide_quat
+
+        self.handle_current_progress = self.sim.data.qpos[self.hinge_qpos_addr]
+
+    def _reset_internal_hacky(self):
+        super()._reset_internal()
+
+        # Sample from the placement initializer for all objects
+        object_placements = self.placement_initializer.sample()
+
+        # We know we're only setting a single object (the door), so specifically set its pose
+        slide_pos, slide_quat, _ = object_placements[self.slide.name]
+        slide_body_id = self.sim.model.body_name2id(self.slide.root_body)
+        slide_pos = list(slide_pos)
+        slide_pos[0] -= 1.
+        slide_pos = tuple(slide_pos)
         self.sim.model.body_pos[slide_body_id] = slide_pos
         self.sim.model.body_quat[slide_body_id] = slide_quat
 

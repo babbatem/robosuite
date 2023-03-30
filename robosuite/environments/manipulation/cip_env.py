@@ -27,7 +27,7 @@ class CIP(object):
     enables functionality for resetting with grasping, safety, etc. 
     construct robosuite env as class EnvName(SingleArmEnv, CIP)
     """
-    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old', manipulability_flip = 'superaverage'):
+    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old', manipulability_flip = 'superaverage', follow_demo = False):
         super(CIP, self).__init__()
         self.solver = None
         self.setGeomIDs()
@@ -46,6 +46,7 @@ class CIP(object):
         self.ttt_constant = ttt_constant
         self.manip_strategy = manip_strategy
         self.manipulability_flip = manipulability_flip
+        self.follow_demo = follow_demo
         print('P_constant')
         print(self.p_constant)
         print('M_constant')
@@ -137,33 +138,52 @@ class CIP(object):
         return curr
 
 
-    def calculate_demo_specific_task_vector(self,grasp_pose):
-
-        # print("Grasp_pose")
-        # print(grasp_pose)
+    def find_closest_grasp_traj(self,grasp_pose):
 
         closest = self.grasp_data_list[0]
         indice = 0
         for zz in range(len(self.grasp_data_list)):
             diff_new = self.grasp_data_list[zz] - grasp_pose
-            # print('A')
-            # print(self.grasp_data_list[zz])
-            # print('B')
-            # print(grasp_pose)
-            # print('C')
-            # print(diff_new)
             diff_old = closest - grasp_pose
             new_dist = LA.norm(diff_new, 'fro')
             old_dist = LA.norm(diff_old, 'fro')
             if new_dist < old_dist:
                 closest = self.grasp_data_list[zz]
                 indice = zz
+        closest_trajectory = self.demo_data_list[indice]
+
+        return closest, closest_trajectory
+
+
+    def calculate_demo_specific_task_vector(self,grasp_pose):
 
         # print("Grasp_pose")
         # print(grasp_pose)
-        # print('Closest')
-        # print(self.grasp_data_list[indice])
-        closest_trajectory = self.demo_data_list[indice]
+
+        # closest = self.grasp_data_list[0]
+        # indice = 0
+        # for zz in range(len(self.grasp_data_list)):
+        #     diff_new = self.grasp_data_list[zz] - grasp_pose
+        #     # print('A')
+        #     # print(self.grasp_data_list[zz])
+        #     # print('B')
+        #     # print(grasp_pose)
+        #     # print('C')
+        #     # print(diff_new)
+        #     diff_old = closest - grasp_pose
+        #     new_dist = LA.norm(diff_new, 'fro')
+        #     old_dist = LA.norm(diff_old, 'fro')
+        #     if new_dist < old_dist:
+        #         closest = self.grasp_data_list[zz]
+        #         indice = zz
+
+        # # print("Grasp_pose")
+        # # print(grasp_pose)
+        # # print('Closest')
+        # # print(self.grasp_data_list[indice])
+        # closest_trajectory = self.demo_data_list[indice]
+
+        closest_grasp, closest_trajectory = self.find_closest_grasp_traj(grasp_pose)
 
         actions = []
         actions2 = []
@@ -300,44 +320,107 @@ class CIP(object):
                 self.render()
             return False 
 
+        if self.follow_demo == True:
+
+                closest_grasp, closest_trajectory = self.find_closest_grasp_traj(grasp_pose_old)
+
+
         for qpos in candidate_qpos:
 
-            if self.checkJointPosition(qpos):
-                if verbose: 
-                    print('joint limit')
-                    self.render()
-                qpos = None 
-                continue
+            if self.follow_demo == True:
 
-            # set joints 
-            self.sim.data.qpos[:7] = qpos
-            self.sim.forward()
+                if self.checkJointPosition(qpos):
+                    if verbose: 
+                        print('joint limit')
+                        self.render()
+                    qpos = None 
+                    continue
 
-            # ensure valid
-            collision_score = self.isInvalidMJ()
-            if collision_score != 0:
-                if verbose: 
-                    #print('collision')
-                    self.render()
-                qpos = None 
-                continue 
+                # set joints 
+                self.sim.data.qpos[:7] = qpos
+                self.sim.forward()
 
-            # maybe keep qpos w/ highest manipulability score 
-            if not optimal_ik: 
-                best_qpos = qpos 
-                break
+                # ensure valid
+                collision_score = self.isInvalidMJ()
+                if collision_score != 0:
+                    if verbose: 
+                        print('collision')
+                        self.render()
+                    qpos = None 
+                    continue 
+
+                # maybe keep qpos w/ highest manipulability score 
+                if not optimal_ik: 
+                    print('NOT ENTERING')
+                    best_qpos = qpos 
+                    break
+
+                else:
+                    wp_sum = 0
+                    for i, transition_tuple in enumerate(closest_trajectory):
+                        
+                        if self.manip_strategy == 'ellipsoid':
+                            w,p,wp = self.check_manipulability_ellipsoid()
+                            wp_sum += wp
+                        elif self.manip_strategy == 'paper':
+                            w,p,wp = self.check_manipulability_paper()
+                            wp_sum += wp
+                        elif self.manip_strategy == 'old':
+                            w,p,wp = self.check_manipulability_old()
+                            wp_sum += wp
+
+                        s, a, r, done_p, sp = transition_tuple
+                        
+                        self.step(a)
+                        #self.render()
+                        #self.sim.forward()
+                        
+
+                    if wp_sum > best_manip:
+                        best_manip = wp_sum 
+                        best_qpos = qpos
+                    self._reset_internal_hacky()
+                    #self.render()
+                    #self.sim.forward()
 
             else:
-                if self.manip_strategy == 'ellipsoid':
-                    w,p,wp = self.check_manipulability_ellipsoid()
-                elif self.manip_strategy == 'paper':
-                    w,p,wp = self.check_manipulability_paper()
-                else:
-                    w,p,wp = self.check_manipulability_old()
-                if wp > best_manip:
-                    best_manip = wp 
-                    best_qpos = qpos
 
+                if self.checkJointPosition(qpos):
+                    if verbose: 
+                        print('joint limit')
+                        self.render()
+                    qpos = None 
+                    continue
+
+                # set joints 
+                self.sim.data.qpos[:7] = qpos
+                self.sim.forward()
+
+                # ensure valid
+                collision_score = self.isInvalidMJ()
+                if collision_score != 0:
+                    if verbose: 
+                        #print('collision')
+                        self.render()
+                    qpos = None 
+                    continue 
+
+                # maybe keep qpos w/ highest manipulability score 
+                if not optimal_ik: 
+                    best_qpos = qpos 
+                    break
+
+                else:
+                    if self.manip_strategy == 'ellipsoid':
+                        w,p,wp = self.check_manipulability_ellipsoid()
+                    elif self.manip_strategy == 'paper':
+                        w,p,wp = self.check_manipulability_paper()
+                    elif self.manip_strategy == 'old':
+                        w,p,wp = self.check_manipulability_old()
+                    if wp > best_manip:
+                        best_manip = wp 
+                        best_qpos = qpos
+        self._reset_internal()
         if best_qpos is None:
             return False 
 
