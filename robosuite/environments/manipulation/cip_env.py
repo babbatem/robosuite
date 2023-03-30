@@ -317,7 +317,7 @@ class CIP(object):
         if len(candidate_qpos) == 0: 
             if verbose: 
                 print('solver returned none')
-                self.render()
+                #self.render()
             return False 
 
         if self.follow_demo == True:
@@ -328,11 +328,70 @@ class CIP(object):
         for qpos in candidate_qpos:
 
             if self.follow_demo == True:
+                if self.checkJointPosition(qpos):
+                    if verbose: 
+                        print('joint limit')
+                        #self.render()
+                    qpos = None 
+                    continue
+
+                # set joints 
+                # self.sim.data.qpos[:7] = qpos
+                self.sim.data.qpos[self.robots[0]._ref_gripper_joint_pos_indexes] = [0.05, -0.05]
+                self.set_qpos_and_update(qpos)
+
+                # ensure valid
+                collision_score = self.isInvalidMJ()
+                if collision_score != 0:
+                    if verbose: 
+                        print('collision')
+                        #self.render()
+                    qpos = None 
+                    continue 
+
+                a = np.zeros(self.action_spec[0].shape)
+                a[-1] = 1
+                for _ in range(10):
+                    o, r, d, i = self.step(a)
+
+                # maybe keep qpos w/ highest manipulability score 
+                if not optimal_ik: 
+                    print('NOT ENTERING')
+                    best_qpos = qpos 
+                    break
+
+                else:
+                    wp_sum = 0
+                    for i, transition_tuple in enumerate(closest_trajectory):
+                        s, a, r, done_p, sp = transition_tuple
+                        if self.manip_strategy == 'ellipsoid':
+                            w,p,wp = self.check_manipulability_ellipsoid(np.array(a[0:6]))
+                            wp_sum += wp
+                        elif self.manip_strategy == 'paper':
+                            w,p,wp = self.check_manipulability_paper(np.array(a[0:6]))
+                            wp_sum += wp
+                        elif self.manip_strategy == 'old':
+                            w,p,wp = self.check_manipulability_old()
+                            wp_sum += wp
+
+                        
+                        
+                        self.step(a)
+                        #self.sim.forward()
+                        
+
+                    if wp_sum > best_manip:
+                        best_manip = wp_sum 
+                        best_qpos = qpos
+                    self.reset()
+                    #self.sim.forward()
+
+            else:
 
                 if self.checkJointPosition(qpos):
                     if verbose: 
                         print('joint limit')
-                        self.render()
+                        #self.render()
                     qpos = None 
                     continue
 
@@ -345,63 +404,7 @@ class CIP(object):
                 if collision_score != 0:
                     if verbose: 
                         print('collision')
-                        self.render()
-                    qpos = None 
-                    continue 
-
-                # maybe keep qpos w/ highest manipulability score 
-                if not optimal_ik: 
-                    print('NOT ENTERING')
-                    best_qpos = qpos 
-                    break
-
-                else:
-                    wp_sum = 0
-                    for i, transition_tuple in enumerate(closest_trajectory):
-                        
-                        if self.manip_strategy == 'ellipsoid':
-                            w,p,wp = self.check_manipulability_ellipsoid()
-                            wp_sum += wp
-                        elif self.manip_strategy == 'paper':
-                            w,p,wp = self.check_manipulability_paper()
-                            wp_sum += wp
-                        elif self.manip_strategy == 'old':
-                            w,p,wp = self.check_manipulability_old()
-                            wp_sum += wp
-
-                        s, a, r, done_p, sp = transition_tuple
-                        
-                        self.step(a)
                         #self.render()
-                        #self.sim.forward()
-                        
-
-                    if wp_sum > best_manip:
-                        best_manip = wp_sum 
-                        best_qpos = qpos
-                    self._reset_internal_hacky()
-                    #self.render()
-                    #self.sim.forward()
-
-            else:
-
-                if self.checkJointPosition(qpos):
-                    if verbose: 
-                        print('joint limit')
-                        self.render()
-                    qpos = None 
-                    continue
-
-                # set joints 
-                self.sim.data.qpos[:7] = qpos
-                self.sim.forward()
-
-                # ensure valid
-                collision_score = self.isInvalidMJ()
-                if collision_score != 0:
-                    if verbose: 
-                        #print('collision')
-                        self.render()
                     qpos = None 
                     continue 
 
@@ -412,9 +415,9 @@ class CIP(object):
 
                 else:
                     if self.manip_strategy == 'ellipsoid':
-                        w,p,wp = self.check_manipulability_ellipsoid()
+                        w,p,wp = self.check_manipulability_ellipsoid(self.task_mean)
                     elif self.manip_strategy == 'paper':
-                        w,p,wp = self.check_manipulability_paper()
+                        w,p,wp = self.check_manipulability_paper(self.task_mean)
                     elif self.manip_strategy == 'old':
                         w,p,wp = self.check_manipulability_old()
                     if wp > best_manip:
@@ -507,7 +510,7 @@ class CIP(object):
         return samples[mask].detach().cpu().numpy(), ee_pose_target
 
 
-    def check_manipulability_ellipsoid(self):
+    def check_manipulability_ellipsoid(self, task_action):
         ### Manipulability elipsoid
         # Use jacobian to translate joint velocities to end effector velocities.
         Jp = self.robots[0].sim.data.get_body_jacp(self.robots[0].robot_model.eef_name).reshape((3, -1))
@@ -525,7 +528,7 @@ class CIP(object):
 
         ########### NEW ###########
         invJJt = np.linalg.inv(JJt)
-        ttt = 1 / np.dot(np.dot(self.task_mean[None], invJJt), self.task_mean[None].transpose())[0][0]
+        ttt = 1 / np.dot(np.dot(task_action[None], invJJt), task_action[None].transpose())[0][0]
         ttt = np.sqrt(ttt)
         ### Penalization for distance to joint limits
         p = 1
@@ -541,7 +544,7 @@ class CIP(object):
         return(w,p,np.power(w,self.m_constant) * np.power(p,self.p_constant) * np.power(ttt,self.ttt_constant))
 
 
-    def check_manipulability_paper(self):
+    def check_manipulability_paper(self, task_action):
         ### Manipulability paper
         # Use jacobian to translate joint velocities to end effector velocities.
         Jp = self.robots[0].sim.data.get_body_jacp(self.robots[0].robot_model.eef_name).reshape((3, -1))
@@ -559,7 +562,7 @@ class CIP(object):
 
         #### new
  
-        ttt = np.dot(J.transpose(), self.task_mean[None].transpose())[:,0]
+        ttt = np.dot(J.transpose(), task_action[None].transpose())[:,0]
 
         ttt = np.sqrt(ttt.dot(ttt))
         
