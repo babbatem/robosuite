@@ -20,7 +20,8 @@
             />
 
           <joint type="hinge" range="0 1.75" axis="1 0 0" name="joint_1" pos="0 -.15 0"  armature="0"/>
-          <site name="handle" pos="0 0 .3" size="0.02" rgba="0 0 1 1" />                    
+          <!-- <geom name="test" pos="0 0 0.3" size="0.02" type="sphere" rgba="0 0 1 1"/> -->
+          <site name="handle" pos="0 0 .3" size="0.02" rgba="0 0 1 1" />       
         </body>
     </body>
     <site name="bottom_site" pos="0 0 -0.3" rgba="0 0 0 0" size="0.005"/>

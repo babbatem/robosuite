@@ -9,7 +9,7 @@ import robosuite
 import robosuite.utils.transform_utils as T
 from robosuite.controllers import controller_factory
 
-from ikflow.utils import get_ik_solver, get_solution_errors
+#from ikflow.utils import get_ik_solver, get_solution_errors
 
 with open("ikflow/model_descriptions.yaml", "r") as f:
     MODEL_DESCRIPTIONS = yaml.safe_load(f)
