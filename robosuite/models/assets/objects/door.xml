@@ -27,6 +27,7 @@
                       <geom fromto="0 0 0 0 -0.125 0" size="0.025" type="cylinder" group="1" name="handle_base" material="MatMetal"/>
                       <geom size="0.075 0.015 0.02" pos="0.075 -0.10 0" type="box" group="1" name="handle" material="MatMetal"/>
                       <!-- Don't render the door handle site by default -->
+                      <!-- <geom name="test" pos="0.125 -0.10 0" size="0.10" type="sphere" rgba="0 0 1 1"/> -->
                       <site name="handle" pos="0.125 -0.10 0" size="0.02" rgba="0 0 1 0" />
                   </body>
               </body>
