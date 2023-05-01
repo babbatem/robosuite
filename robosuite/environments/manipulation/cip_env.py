@@ -28,7 +28,7 @@ class CIP(object):
     enables functionality for resetting with grasping, safety, etc. 
     construct robosuite env as class EnvName(SingleArmEnv, CIP)
     """
-    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old'):
+    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=200, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old'):
         super(CIP, self).__init__()
         self.solver = None
         self.setGeomIDs()
