@@ -132,7 +132,8 @@ class DoorCIP(Door, CIP):
             # Add reaching component
             dist = np.linalg.norm(self._gripper_to_handle)
             reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
-            #reward += reaching_reward
+            reward += reaching_reward
+            
             # Add rotating component if we're using a locked door
             if self.use_latch:
                 handle_qpos = self.sim.data.qpos[self.handle_qpos_addr]
