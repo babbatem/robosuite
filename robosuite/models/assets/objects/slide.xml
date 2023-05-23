@@ -13,7 +13,7 @@
                 <joint name="joint_1" pos="0 0 0" axis="0 -1 0" type="slide" damping="1" limited="true" range="0 0.4" />
                 <geom name="slide" type="box" size=".0248 .05 .0125" pos="0 0 0" rgba="0 1 0 1" group="0"/>
                 <geom name="grip" type="box" size=".01 .01 .03" pos="0 0 .04" rgba="0 1 0 1" group="0"/>
-                <site name="handle" pos="0 0 .3" size="0.02" rgba="0 0 1 1" />
+                <site name="handle" pos="0 0 .05" size="0.02" rgba="0 0 1 1" />
             </body>
         </body>
     <site name="bottom_site" pos="0 0 -0.3" rgba="0 0 0 0" size="0.005"/>
