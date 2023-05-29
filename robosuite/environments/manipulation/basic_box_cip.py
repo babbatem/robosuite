@@ -132,10 +132,9 @@ class BasicBoxCIP(SingleArmEnv, CIP):
             dist = np.linalg.norm(self._gripper_to_handle) # CAN'T DO THIS BECAUSE IT'S SPECIFIC TO DRAWER
             reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
             reward += reaching_reward
-            # Add rotating component if we're using a locked door
-            # if self.use_latch:
-            #     handle_qpos = self.sim.data.qpos[self.handle_qpos_addr]
-            #     reward += np.clip(0.25 * np.abs(handle_qpos / (0.5 * np.pi)), -0.25, 0.25)
+                
+            hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
+            reward += np.clip(0.25 * np.abs(hinge_qpos / (0.5 * np.pi)), -0.25, 0.25)
 
         # Scale reward if requested
         if self.reward_scale is not None:
