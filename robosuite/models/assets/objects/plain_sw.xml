@@ -1,0 +1,30 @@
+<mujoco model="plain_sw">
+    <compiler angle="radian" />
+    <size njmax="500" nconmax="100" />
+    <asset>
+        <mesh name="base_link" file="./meshes/base_link.STL" />
+        <mesh name="top_link" file="./meshes/top_Link.STL" />
+    </asset>
+    <worldbody>
+        <body>
+        <body name="object">
+        <body name="base">
+            <geom type="mesh" rgba="0.796078 0.823529 0.937255 1" mesh="base_link" contype="0" group="1"/>
+            <body name="top_link" pos="0 0.071183 0.14422" quat="0.499998 0.5 -0.500002 -0.5">
+                <inertial pos="0.0938686 0.0492173 -0.00126429" quat="0.706204 -0.00134102 -0.00133987 0.708006" mass="0.402154" diaginertia="0.000717544 0.000574886 0.000288512" />
+                <joint name="joint_1" pos="0 0 0" axis="0 0 1" limited="true" range="0 2" frictionloss="0.5" />
+                <geom type="mesh" rgba="0.796078 0.823529 0.937255 1" mesh="top_link" contype="0" group="1"/>
+                <!-- <geom name="test" pos="0.105 0.075 0" size="0.03" type="sphere" rgba="0 0 1 1"/> -->
+                <site name="handle" pos="0.105 0.075 0" size="1.02" rgba="0 0 1 1" />
+            </body>
+        </body>
+        </body>
+        <site name="bottom_site" pos="0 0 -0.3" rgba="0 0 0 0" size="0.005"/>
+        <site name="top_site" pos="0 0 0.3" rgba="0 0 0 0" size="0.005"/>
+        <site name="horizontal_radius_site" pos="0.3 0 0" rgba="0 0 0 0" size="0.1"/>
+        </body>
+    </worldbody>
+    <contact>
+        <exclude name="exclude_2_body_0" body1="base" body2="top_link"/>
+    </contact>
+</mujoco>

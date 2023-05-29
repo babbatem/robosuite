@@ -18,7 +18,8 @@ from .xml_objects import (
     DoorObject,
     DrawerObject, 
     LeverObject, 
-    SlideObject
+    SlideObject,
+    MonkeyBoxOneObject
 )
 from .primitive import *
 from .composite import *
