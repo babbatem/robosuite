@@ -39,7 +39,7 @@ class CIP(object):
                             }
 
         print(self.__class__.__name__)
-        self.task_mean = self.calculate_task_vector()
+        # self.task_mean = self.calculate_task_vector()
         self.p_constant = p_constant
         self.m_constant = m_constant
         self.ttt_constant = ttt_constant
