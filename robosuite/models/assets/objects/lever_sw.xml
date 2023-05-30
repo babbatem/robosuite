@@ -1,0 +1,50 @@
+<mujoco model="lever_sw">
+    <compiler angle="radian" />
+    <size njmax="500" nconmax="100" />
+    <asset>
+        <mesh name="base_link" file="./meshes/lever_sw/base_link.STL" />
+        <mesh name="top_link" file="./meshes/lever_sw/top_link.STL" />
+        <mesh name="slider_link" file="./meshes/lever_sw/slider_link.STL" />
+        <mesh name="lever_link" file="./meshes/lever_sw/lever_link.STL" />
+    </asset>
+    <worldbody>
+        <body>
+        <body name="object">
+        <body name="base">
+        <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="base_link"  contype="0" group="1"/>
+        <body name="top_link" pos="-0.12893 -0.0050165 0.1474" quat="0.499998 -0.5 0.500002 -0.5">
+            <inertial pos="0.093897 -0.049338 0.054007" quat="0.708075 0.00408827 0.00409166 0.706114" mass="0.28453" diaginertia="0.000504481 0.000406737 0.000201182" />
+            <joint name="top_joint" pos="0 0 0" axis="0 0 -1" limited="true" range="0 1.57" />
+            <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="top_link"  contype="0" group="1"/>
+            <!-- <geom name="test" pos="0.103 -0.075 0.053" size="0.03" type="sphere" rgba="0 0 1 1"/> -->
+            <site name="top_handle" pos="0.103 -0.075 0.053" size="1.02" rgba="0 0 1 1" />
+        </body>
+        <body name="slider_link" pos="-0.14288 -0.1524 0.0889" quat="0.499998 -0.5 0.500002 -0.5">
+            <inertial pos="0.01423 -0.0076054 0.0096198" quat="0.551182 0.834385 0 0" mass="0.019903" diaginertia="6.9109e-06 6.90008e-06 5.39412e-06" />
+            <joint name="slider_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="true" range="0 0.06" />
+            <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="slider_link"  contype="0" group="1"/>
+            <!-- <geom name="test2" pos="0.025 -0.005 0.0025" size="0.015" type="sphere" rgba="0 0 1 1"/> -->
+            <site name="slide_handle" pos="0.025 -0.005 0.0025" size="1.02" rgba="0 0 1 1" />
+        </body>
+        <body name="lever_link" pos="-0.1524 -0.0762 0.1016" quat="0.707105 0 -0.707108 0">
+            <inertial pos="0.036131 -0.0029899 0.0028089" quat="-0.0284155 0.646196 -0.0288488 0.762097" mass="0.032636" diaginertia="3.20444e-05 3.16227e-05 3.37021e-06" />
+            <joint name="lever_joint" pos="0 0 0" axis="0 0 1" limited="true" range="-1.57 1.57" damping="1" frictionloss="1"/>
+            <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="lever_link"  contype="0" group="1"/>
+            <!-- <geom name="test3" pos="0.1 0 0.025" size="0.01" type="sphere" rgba="0 0 1 1"/> -->
+            <site name="lever_handle" pos="0.1 0 0.025" size="1.02" rgba="0 0 1 1" />
+        </body>
+        </body>
+        </body>
+        <site name="bottom_site" pos="0 0 -0.3" rgba="0 0 0 0" size="0.005"/>
+        <site name="top_site" pos="0 0 0.3" rgba="0 0 0 0" size="0.005"/>
+        <site name="horizontal_radius_site" pos="0.3 0 0" rgba="0 0 0 0" size="0.1"/>
+        </body>
+    </worldbody>
+    <contact>
+        <exclude name="exclude_2_body_0" body1="base" body2="top_link"/>
+        <!-- <exclude name="exclude_2_body_1" body1="slider_link" body2="top_link"/>
+        <exclude name="exclude_2_body_2" body1="slider_link" body2="base"/>
+        <exclude name="exclude_2_body_3" body1="lever_link" body2="top_link"/>
+        <exclude name="exclude_2_body_4" body1="lever_link" body2="base"/> -->
+    </contact>
+</mujoco>

@@ -1,0 +1,40 @@
+<mujoco model="slider_sw">
+    <compiler angle="radian" />
+    <size njmax="500" nconmax="100" />
+    <asset>
+        <mesh name="base_link" file="./meshes/slider_sw/base_link.STL" />
+        <mesh name="top_link" file="./meshes/slider_sw/top_link.STL" />
+        <mesh name="slider_link" file="./meshes/slider_sw/slider_link.STL" />
+    </asset>
+    <worldbody>
+        <body>
+        <body name="object">
+        <body name="base">
+        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="base_link" contype="0" group="1"/>
+        <body name="top_link" pos="0.019609 0.14738 0.1474" quat="0.499998 0.5 0.500002 0.5">
+            <inertial pos="-0.093935 0.049344 0.058002" quat="0.708027 -0.00408805 -0.00409188 0.706162" mass="0.28443" diaginertia="0.000504461 0.000406727 0.000201172" />
+            <joint name="top_joint" pos="0 0 0" axis="0 0 -1" limited="true" range="0 1.57" />
+            <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="top_link" contype="0" group="1"/>
+            <!-- <geom name="test" pos="-0.103 0.075 0.057" size="0.03" type="sphere" rgba="0 0 1 1"/> -->
+            <site name="top_handle" pos="-0.103 0.075 0.057" size="1.02" rgba="0 0 1 1" />
+        </body>
+        <body name="slider_link" pos="0.009525 0 0.0889" quat="0.499998 -0.5 0.500002 -0.5">
+            <inertial pos="0.014979 -0.0077014 0.010112" quat="0.403054 0.580988 -0.580988 0.403054" mass="0.019201" diaginertia="6.84616e-06 6.3796e-06 4.91554e-06" />
+            <joint name="slider_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="true" range="0 0.06" />
+            <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="slider_link" contype="0" group="1"/>
+            <!-- <geom name="test2" pos="0.025 -0.005 0.007" size="0.03" type="sphere" rgba="0 0 1 1"/> -->
+            <site name="slide_handle" pos="0.025 -0.005 0.007" size="1.02" rgba="0 0 1 1" />
+        </body>
+        </body>
+        </body>
+        <site name="bottom_site" pos="0 0 -0.3" rgba="0 0 0 0" size="0.005"/>
+        <site name="top_site" pos="0 0 0.3" rgba="0 0 0 0" size="0.005"/>
+        <site name="horizontal_radius_site" pos="0.3 0 0" rgba="0 0 0 0" size="0.1"/>
+        </body>
+    </worldbody>
+    <contact>
+        <exclude name="exclude_2_body_0" body1="base" body2="top_link"/>
+        <!-- <exclude name="exclude_2_body_1" body1="slider_link" body2="top_link"/>
+        <exclude name="exclude_2_body_2" body1="slider_link" body2="base"/> -->
+    </contact>
+</mujoco>
