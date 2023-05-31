@@ -126,20 +126,23 @@ class SliderBoxCIP(SingleArmEnv, CIP):
         if self._check_success():
             reward = 1.0
 
-        # # else, we consider only the case if we're using shaped rewards
-        # elif self.reward_shaping:
-        #     # Add reaching component
-        #     dist = np.linalg.norm(self._gripper_to_handle) # CAN'T DO THIS BECAUSE IT'S SPECIFIC TO DRAWER
-        #     reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
-        #     reward += reaching_reward
-        #     # Add rotating component if we're using a locked door
-        #     # if self.use_latch:
-        #     #     handle_qpos = self.sim.data.qpos[self.handle_qpos_addr]
-        #     #     reward += np.clip(0.25 * np.abs(handle_qpos / (0.5 * np.pi)), -0.25, 0.25)
+        # EXPERIMENTAL: reaching reward
+        elif self.reward_shaping:
+            if self._check_success_subtask():
+                # Add reaching component
+                reward = 0.3
+                dist = np.linalg.norm(self._gripper_to_top_handle)
+                reaching_reward = 0.2 * (1 - np.tanh(10.0 * dist))
+                reward += reaching_reward
+            else:
+                # Add reaching component if slide isn't complete
+                dist = np.linalg.norm(self._gripper_to_slide_handle)
+                reaching_reward = 0.2 * (1 - np.tanh(10.0 * dist))
+                reward += reaching_reward
 
-        # # Scale reward if requested
-        # if self.reward_scale is not None:
-        #     reward *= self.reward_scale / 1.0
+        # Scale reward if requested
+        if self.reward_scale is not None:
+            reward *= self.reward_scale / 1.0
 
         return reward
 
@@ -216,6 +219,7 @@ class SliderBoxCIP(SingleArmEnv, CIP):
         self.box_top_handle_site_id = self.sim.model.site_name2id(self.box.important_sites["top_handle"])
         self.box_slide_handle_site_id = self.sim.model.site_name2id(self.box.important_sites["slide_handle"])
         
+        # DOUBLE CHECK
         self.top_hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[0])
         self.slide_hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[1])
 
@@ -330,7 +334,18 @@ class SliderBoxCIP(SingleArmEnv, CIP):
             bool: True if door has been opened
         """
         hinge_qpos = self.sim.data.qpos[self.top_hinge_qpos_addr]
-        return hinge_qpos > 1.5
+        return hinge_qpos > 1.0
+    
+    # NEW #1
+    def _check_success_subtask(self):
+        """
+        Check if door has been opened.
+
+        Returns:
+            bool: True if door has been opened
+        """
+        hinge_qpos = self.sim.data.qpos[self.slide_hinge_qpos_addr]
+        return hinge_qpos > 0.05 # how much do I set this?
 
     def visualize(self, vis_settings):
         """

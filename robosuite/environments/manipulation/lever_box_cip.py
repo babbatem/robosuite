@@ -126,6 +126,30 @@ class LeverBoxCIP(SingleArmEnv, CIP):
         if self._check_success():
             reward = 1.0
 
+        # EXPERIMENTAL: reaching reward
+        elif self.reward_shaping:
+            if self._check_success_subtask_1() and self._check_success_subtask_2():
+                # Add reaching component
+                reward = 0.45
+                dist = np.linalg.norm(self._gripper_to_top_handle)
+                reaching_reward = 0.15 * (1 - np.tanh(10.0 * dist))
+                reward += reaching_reward
+            elif self._check_success_subtask_2():
+                # Add reaching component if slide isn't complete but lever is complete
+                reward = 0.2
+                dist = np.linalg.norm(self._gripper_to_slide_handle)
+                reaching_reward = 0.15 * (1 - np.tanh(10.0 * dist))
+                reward += reaching_reward
+            else:
+                # Add reaching component if both slide and lever aren't complete
+                dist = np.linalg.norm(self._gripper_to_lever_handle)
+                reaching_reward = 0.15 * (1 - np.tanh(10.0 * dist))
+                reward += reaching_reward
+        
+        # Scale reward if requested
+        if self.reward_scale is not None:
+            reward *= self.reward_scale / 1.0
+
         return reward
 
     def _load_model(self):
@@ -203,6 +227,7 @@ class LeverBoxCIP(SingleArmEnv, CIP):
         self.box_slide_handle_site_id = self.sim.model.site_name2id(self.box.important_sites["slide_handle"])
         self.box_lever_handle_site_id = self.sim.model.site_name2id(self.box.important_sites["lever_handle"])
         
+        # DOUBLE CHECK
         self.top_hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[0])
         self.slide_hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[1])
         self.lever_hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[2])
@@ -323,7 +348,29 @@ class LeverBoxCIP(SingleArmEnv, CIP):
             bool: True if door has been opened
         """
         hinge_qpos = self.sim.data.qpos[self.top_hinge_qpos_addr]
-        return hinge_qpos > 1.5
+        return hinge_qpos > 1.0
+    
+    # NEW #1
+    def _check_success_subtask_1(self):
+        """
+        Check if door has been opened.
+
+        Returns:
+            bool: True if door has been opened
+        """
+        hinge_qpos = self.sim.data.qpos[self.slide_hinge_qpos_addr]
+        return hinge_qpos > 0.05 # how much do I set this?
+    
+    # NEW #2
+    def _check_success_subtask_2(self):
+        """
+        Check if door has been opened.
+
+        Returns:
+            bool: True if door has been opened
+        """
+        hinge_qpos = self.sim.data.qpos[self.lever_hinge_qpos_addr]
+        return hinge_qpos < -0.5 # how much do I set this?
 
     def visualize(self, vis_settings):
         """

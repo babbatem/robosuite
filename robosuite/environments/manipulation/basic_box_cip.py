@@ -313,7 +313,7 @@ class BasicBoxCIP(SingleArmEnv, CIP):
             bool: True if door has been opened
         """
         hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-        return hinge_qpos > 1.5
+        return hinge_qpos > 1.0
 
     def visualize(self, vis_settings):
         """
