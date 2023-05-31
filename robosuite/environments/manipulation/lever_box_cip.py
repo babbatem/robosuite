@@ -328,6 +328,10 @@ class LeverBoxCIP(SingleArmEnv, CIP):
         """
         super()._reset_internal()
 
+        # RESET STIFFNESS VALUES
+        self.sim.model.jnt_stiffness[-3] = 1000
+        self.sim.model.jnt_stiffness[-2] = 1000
+
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
 
@@ -450,6 +454,21 @@ class LeverBoxCIP(SingleArmEnv, CIP):
         """
         return self._lever_handle_xpos - self._eef_xpos
     
+    def _pre_action(self, action, policy_step):
+        super()._pre_action(action, policy_step)
+       
+        # CHANGE STIFFNESS VALUES
+
+        self.sim.model.jnt_stiffness[-3] = 1000
+        self.sim.model.jnt_stiffness[-2] = 1000
+
+        if self._check_success_subtask_1() and self._check_success_subtask_2():
+            self.sim.model.jnt_stiffness[-3] = 0
+            self.sim.model.jnt_stiffness[-2] = 0
+        elif self._check_success_subtask_2():
+            self.sim.model.jnt_stiffness[-2] = 0
+
+
     def _post_action(self, action):
         reward, done, info = super()._post_action(action)
 

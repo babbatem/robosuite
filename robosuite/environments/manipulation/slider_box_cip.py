@@ -314,6 +314,9 @@ class SliderBoxCIP(SingleArmEnv, CIP):
         """
         super()._reset_internal()
 
+        # RESET STIFFNESS VALUES
+        self.sim.model.jnt_stiffness[-2] = 1000
+
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
 
@@ -346,6 +349,7 @@ class SliderBoxCIP(SingleArmEnv, CIP):
         """
         hinge_qpos = self.sim.data.qpos[self.slide_hinge_qpos_addr]
         return hinge_qpos > 0.05 # how much do I set this?
+
 
     def visualize(self, vis_settings):
         """
@@ -405,6 +409,15 @@ class SliderBoxCIP(SingleArmEnv, CIP):
         """
         return self._slide_handle_xpos - self._eef_xpos
     
+    def _pre_action(self, action, policy_step):
+        super()._pre_action(action, policy_step)
+        # CHANGE STIFFNESS VALUES
+
+        self.sim.model.jnt_stiffness[-2] = 1000
+
+        if self._check_success_subtask():
+            self.sim.model.jnt_stiffness[-2] = 0
+
     def _post_action(self, action):
         reward, done, info = super()._post_action(action)
 
