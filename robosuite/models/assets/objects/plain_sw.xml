@@ -2,8 +2,8 @@
     <compiler angle="radian" />
     <size njmax="500" nconmax="100" />
     <asset>
-        <mesh name="base_link" file="./meshes/base_link.STL" />
-        <mesh name="top_link" file="./meshes/top_Link.STL" />
+        <mesh name="base_link" file="./meshes/plain_sw/base_link.STL" />
+        <mesh name="top_link" file="./meshes/plain_sw/top_Link.STL" />
     </asset>
     <worldbody>
         <body>

@@ -19,7 +19,9 @@ from .xml_objects import (
     DrawerObject, 
     LeverObject, 
     SlideObject,
-    MonkeyBoxOneObject
+    MonkeyBoxOneObject,
+    MonkeyBoxTwoObject,
+    MonkeyBoxThreeObject
 )
 from .primitive import *
 from .composite import *
