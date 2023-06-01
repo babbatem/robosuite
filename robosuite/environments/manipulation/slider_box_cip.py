@@ -140,6 +140,9 @@ class SliderBoxCIP(SingleArmEnv, CIP):
                 reaching_reward = 0.2 * (1 - np.tanh(10.0 * dist))
                 reward += reaching_reward
 
+            hinge_qpos = self.sim.data.qpos[self.top_hinge_qpos_addr]
+            reward += np.clip(0.25 * np.abs(hinge_qpos / (0.5 * np.pi)), -0.25, 0.25)
+
         # Scale reward if requested
         if self.reward_scale is not None:
             reward *= self.reward_scale / 1.0
@@ -187,7 +190,7 @@ class SliderBoxCIP(SingleArmEnv, CIP):
                 mujoco_objects=self.box,
                 x_range=[0.07, 0.09],
                 y_range=[-0.01, 0.01],
-                rotation=(-np.pi / 2.0 - 0.25, -np.pi / 2.0),
+                rotation=( np.pi -0.125, np.pi + 0.125),
                 rotation_axis="z",
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
