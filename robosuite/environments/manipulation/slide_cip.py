@@ -198,31 +198,35 @@ class SlideCIP(SingleArmEnv, CIP):
         Returns:
             float: reward value
         """
-        reward = 0.0
+        hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr] 
+        goal = 0.2
+        reward = -1 * (goal - hinge_qpos)**2
 
+        # reward = 0.0
+        # 
         # sparse completion reward
-        if self._check_success():
-            reward = 1.0
+        # if self._check_success():
+        #     reward = 1.0
 
-        # else, we consider only the case if we're using shaped rewards
-        elif self.reward_shaping:
-            # Add reaching component
-            dist = np.linalg.norm(self._gripper_to_handle)
-            reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
-            #reward += reaching_reward
+        # # else, we consider only the case if we're using shaped rewards
+        # elif self.reward_shaping:
+        #     # Add reaching component
+        #     dist = np.linalg.norm(self._gripper_to_handle)
+        #     reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
+        #     #reward += reaching_reward
 
-            # add hinge qpos component 
-            hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-            reward_progress = 0
-            if hinge_qpos > self.handle_current_progress: #progress has been made
-                reward_progress = hinge_qpos - self.handle_current_progress
-                self.handle_current_progress = hinge_qpos
-            reward += np.clip(reward_progress, 0, 0.5)
-            #reward += hinge_qpos
+        #     # add hinge qpos component 
+        #     hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
+        #     reward_progress = 0
+        #     if hinge_qpos > self.handle_current_progress: #progress has been made
+        #         reward_progress = hinge_qpos - self.handle_current_progress
+        #         self.handle_current_progress = hinge_qpos
+        #     reward += np.clip(reward_progress, 0, 0.5)
+        #     #reward += hinge_qpos
 
-        # Scale reward if requested
-        if self.reward_scale is not None:
-            reward *= self.reward_scale / 1.0
+        # # Scale reward if requested
+        # if self.reward_scale is not None:
+        #     reward *= self.reward_scale / 1.0
 
         return reward
 
