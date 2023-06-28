@@ -200,8 +200,8 @@ class LeverCIP(SingleArmEnv, CIP):
             float: reward value
         """
         hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr] 
-        goal = 0.5
-        reward = -1 * (goal - hinge_qpos)**2
+        goal = 0.6
+        reward = -1 * np.abs(goal - hinge_qpos)
 
         # reward = 0.0
         # # sparse completion reward

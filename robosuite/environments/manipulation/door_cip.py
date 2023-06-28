@@ -122,8 +122,8 @@ class DoorCIP(Door, CIP):
             float: reward value
         """
         hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr] 
-        goal = 0.3
-        reward = -1 * (goal - hinge_qpos)**2
+        goal = 0.4
+        reward = -1 * np.abs(goal - hinge_qpos)
 
         # reward = 0.0
 
