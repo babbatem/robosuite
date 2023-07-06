@@ -209,6 +209,9 @@ class OperationalSpaceController(Controller):
         self.relative_ori = np.zeros(3)
         self.ori_ref = None
         self.torque_hist = [np.array([0, 0, 0, 0, 0, 0, 0])]
+        self.vel_hist = []
+        self.qpos_hist = []
+
 
     def set_goal(self, action, set_pos=None, set_ori=None):
         """
@@ -236,6 +239,7 @@ class OperationalSpaceController(Controller):
             self.kp = np.clip(kp, self.kp_min, self.kp_max)
             self.kd = 2 * np.sqrt(self.kp) * np.clip(damping_ratio, self.damping_ratio_min, self.damping_ratio_max)
         elif self.impedance_mode == "variable_kp":
+            #breakpoint()
             kp, delta = action[:6], action[6:]
             
             if self.scale_stiffness:
@@ -302,6 +306,9 @@ class OperationalSpaceController(Controller):
         """
         # Update state
         self.update()
+
+
+        #breakpoint()
 
         desired_pos = None
         # Only linear interpolator is currently supported
@@ -382,10 +389,45 @@ class OperationalSpaceController(Controller):
             self.unsafe = False
             self.unsafe2 = False
             self.unsafe_joints = []
+            self.velunsafe = False
             #self.unsafe_joints2 = []
             #print(vars(self))
             tol1 = 0.3
             tol2 = 0.2
+            tol3 = 0.1
+            vel_tol = 2
+
+            ######### PRINTING UNSAFETY ###########
+
+            for (qidx, (q, q_limits)) in enumerate(
+               zip(self.sim.data.qpos[self.joint_index], self.sim.model.jnt_range[self.joint_index])
+            ):
+
+               if q_limits[0] != q_limits[1] and not (q_limits[0] + tol3 < q < q_limits[1] - tol3):
+                    
+                   print('Brokenrobot')
+                   print(qidx)
+                   print('Brokenrobot')
+                   #print(self.vel_hist)
+                   #print(self.torque_hist)
+
+            ##### VELOCITY ########
+
+            safe_null_velocity_torques = self.torque_compensation
+            for (qidx, qvel) in enumerate(self.sim.data.qvel[self.joint_index]):
+
+               if qvel > 2 or qvel < -2:
+                    
+                    if qvel < -2:
+                        self.velunsafe = True
+                        safe_null_velocity_torques[qidx] = self.actuator_max[qidx]
+
+                    elif qvel > 2:
+                        self.velunsafe = True
+                        safe_null_velocity_torques[qidx] = self.actuator_min[qidx]
+
+
+            ##### FIRST THRESHOLD #####
             for (qidx, (q, q_limits)) in enumerate(
                zip(self.sim.data.qpos[self.joint_index], self.sim.model.jnt_range[self.joint_index])
             ):
@@ -395,17 +437,8 @@ class OperationalSpaceController(Controller):
                    self.unsafe = True
                    self.unsafe_joints.append(qidx)
 
-            # tol2 = 0.1
-            # for (qidx, (q, q_limits)) in enumerate(
-            #    zip(self.sim.data.qpos[self.joint_index], self.sim.model.jnt_range[self.joint_index])
-            # ):
+            ##### SECOND THRESHOLD ######
 
-            #    if q_limits[0] != q_limits[1] and not (q_limits[0] + tolerance < q < q_limits[1] - tol2):
-                    
-            #        print('=============IN CONTROLLER JOINT VIOLATION==============')
-            #        print(qidx)
-
-            # null_torques2 = np.array([0, 0, 0, 0, 0, 0, 0])
             safe_null_torques = self.torque_compensation
 
             for (qidx, (q, q_limits)) in enumerate(
@@ -416,16 +449,12 @@ class OperationalSpaceController(Controller):
                     
                     if (q < q_limits[0] + tol2):
                         self.unsafe2 = True
-                        safe_null_torques[qidx] = self.actuator_max[qidx]#40*np.abs(np.log(np.abs(q-q_limits[0])/tolerance))#self.actuator_max[qidx] / 8.
-                        #self.unsafe_joints2.append(qidx)
-                        #if self.sim.data.qvel[qidx]<0:
-                            #null_torques2[qidx] += 10*np.abs(self.sim.data.qvel[qidx])
+                        safe_null_torques[qidx] = self.actuator_max[qidx]
                     elif (q > q_limits[1] - tol2):
                         self.unsafe2 = True
-                        safe_null_torques[qidx] = self.actuator_min[qidx]#40*np.abs(np.log(np.abs(q-q_limits[1])/tolerance))#self.actuator_min[qidx] / 8.
-                        #self.unsafe_joints2.append(qidx)
-                        # if self.sim.data.qvel[qidx]<0:
-                        #     null_torques2[qidx] -= 10*np.abs(self.sim.data.qvel[qidx])
+                        safe_null_torques[qidx] = self.actuator_min[qidx]
+
+            ##### ENTERS HERE IF VERY UNSAFE #####
             if self.unsafe2:
                 self.torques = safe_null_torques
                 self.torques = self.clip_torques(self.torques)
@@ -433,34 +462,77 @@ class OperationalSpaceController(Controller):
                 torque_diff = np.clip(torque_diff, [-10, -10, -10, -10, -10, -5, -5], [10, 10, 10, 10, 10, 5, 5])
                 self.torques = self.torque_hist[-1] + torque_diff
                 self.torque_hist.append(self.torques)
+                self.vel_hist.append(self.sim.data.qvel[self.joint_index])
+                self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
                 super().run_controller()
                 #print('===============AGRESSIVE SAFETY================')
                 return self.torques
 
+
+
+            ###### ENTERS HERE IF IT IS CONCERNING BUT NOT SO UNSAFE #######
             if self.unsafe:
                 self.null_goal = copy.copy(self.joint_pos)
                 for qidx in self.unsafe_joints:
                     self.null_goal[qidx] = true_joint_mid[qidx]
                 null_torques = nullspace_torques(self.mass_matrix, nullspace_matrix, self.null_goal, self.joint_pos, self.joint_vel)
                 scale = np.min((np.array([80.,80.,80.,80.,80.,12.,12.]- self.torque_compensation)/np.abs(null_torques)))
-                #print('===============NULLSPACE SAFETY================')
-                #print(null_torques2)
 
-                #null_torques2 = np.dot(nullspace_matrix.transpose(), null_torques2)
-                #print(null_torques2)
-                #scale2 = np.min(np.array((([80.,80.,80.,80.,80.,12.,12.]) - self.torque_compensation)/np.abs(null_torques2)))
-                self.torques = scale * null_torques + self.torque_compensation #scale2 * null_torques2 + self.torque_compensation
+                self.torques = scale * null_torques + self.torque_compensation
+                self.torques = self.clip_torques(self.torques)
+                torque_diff = self.torques - self.torque_hist[-1]
+                torque_diff = np.clip(torque_diff, [-10, -10, -10, -10, -10, -5, -5], [10, 10, 10, 10, 10, 5, 5])
+                self.torques = self.torque_hist[-1] + torque_diff #### CLIPPING FOR SMOOTHNESS ####
+                # Always run superclass call for any cleanups at the end
+                self.torque_hist.append(self.torques)
+                self.vel_hist.append(self.sim.data.qvel[self.joint_index])
+                self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
+                super().run_controller()
+
+                return self.torques
+
+            ####### EVERYHING IS FINE WRT POSE   #########
             else:
-                self.torques += null_torques_initial
-        self.torques = self.clip_torques(self.torques)
-        torque_diff = self.torques - self.torque_hist[-1]
-        torque_diff = np.clip(torque_diff, [-10, -10, -10, -10, -10, -5, -5], [10, 10, 10, 10, 10, 5, 5])
-        self.torques = self.torque_hist[-1] + torque_diff
-        # Always run superclass call for any cleanups at the end
-        self.torque_hist.append(self.torques)
-        super().run_controller()
 
-        return self.torques
+            ##### ENTERS HERE IF VELOCITY UNSAFE #####
+                if self.velunsafe:
+                    self.torques = safe_null_velocity_torques
+                    self.torques = self.clip_torques(self.torques)
+                    torque_diff = self.torques - self.torque_hist[-1]
+                    torque_diff = np.clip(torque_diff, [-10, -10, -10, -10, -10, -5, -5], [10, 10, 10, 10, 10, 5, 5])
+                    self.torques = self.torque_hist[-1] + torque_diff
+                    self.torque_hist.append(self.torques)
+                    self.vel_hist.append(self.sim.data.qvel[self.joint_index])
+                    self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
+                    super().run_controller()
+                    #print('===============AGRESSIVE SAFETY================')
+                    return self.torques
+
+
+                self.torques += null_torques_initial
+                self.torques = self.clip_torques(self.torques)
+                torque_diff = self.torques - self.torque_hist[-1]
+                torque_diff = np.clip(torque_diff, [-10, -10, -10, -10, -10, -5, -5], [10, 10, 10, 10, 10, 5, 5])
+                self.torques = self.torque_hist[-1] + torque_diff #### CLIPPING FOR SMOOTHNESS ####
+                # Always run superclass call for any cleanups at the end
+                self.torque_hist.append(self.torques)
+                self.vel_hist.append(self.sim.data.qvel[self.joint_index])
+                self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
+                super().run_controller()
+
+                return self.torques
+
+
+        # self.torques = self.clip_torques(self.torques)
+        # torque_diff = self.torques - self.torque_hist[-1]
+        # torque_diff = np.clip(torque_diff, [-10, -10, -10, -10, -10, -5, -5], [10, 10, 10, 10, 10, 5, 5])
+        # self.torques = self.torque_hist[-1] + torque_diff #### CLIPPING FOR SMOOTHNESS ####
+        # # Always run superclass call for any cleanups at the end
+        # self.torque_hist.append(self.torques)
+        # self.vel_hist.append(self.sim.data.qvel[self.joint_index])
+        # super().run_controller()
+
+        # return self.torques
 
     def update_initial_joints(self, initial_joints):
         # First, update from the superclass method

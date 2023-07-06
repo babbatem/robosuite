@@ -109,7 +109,8 @@ class CIP(object):
 
             for i, transition_tuple in enumerate(demo_data):
                 s, a, r, done_p, sp = transition_tuple
-                a = a[0:6]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
+                #breakpoint()
+                a = a[6:12]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
                 mag = np.sqrt(a.dot(a))
                 actions.append(a/mag)
             actions = np.array(actions)
@@ -189,7 +190,7 @@ class CIP(object):
 
         for i, transition_tuple in enumerate(closest_trajectory):
             s, a, r, done_p, sp = transition_tuple
-            a = a[0:6]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
+            a = a[6:12]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
             actions2.append(a)
             mag = np.sqrt(a.dot(a))
             actions.append(a/mag)
@@ -348,6 +349,7 @@ class CIP(object):
                 a = np.zeros(self.action_spec[0].shape)
                 a[-1] = 1
                 for _ in range(10):
+
                     o, r, d, i = self.step(a)
 
                 # maybe keep qpos w/ highest manipulability score 
@@ -358,13 +360,14 @@ class CIP(object):
 
                 else:
                     wp_sum = 0
+                    self.robots[0].controller.qpos_hist.clear()
                     for i, transition_tuple in enumerate(closest_trajectory):
                         s, a, r, done_p, sp = transition_tuple
                         if self.manip_strategy == 'ellipsoid':
-                            w,p,wp = self.check_manipulability_ellipsoid(np.array(a[0:6]))
+                            w,p,wp = self.check_manipulability_ellipsoid(np.array(a[6:12]))
                             wp_sum += wp
                         elif self.manip_strategy == 'paper':
-                            w,p,wp = self.check_manipulability_paper(np.array(a[0:6]))
+                            w,p,wp = self.check_manipulability_paper(np.array(a[6:12]))
                             wp_sum += wp
                         elif self.manip_strategy == 'old':
                             w,p,wp = self.check_manipulability_old()
@@ -373,6 +376,7 @@ class CIP(object):
                         
                         
                         self.step(a)
+                        #print(self.robots[0].controller.qpos_hist)
                         #self.sim.forward()
                         
 
@@ -394,7 +398,6 @@ class CIP(object):
                 # set joints 
                 self.sim.data.qpos[:7] = qpos
                 self.sim.forward()
-
                 # ensure valid
                 collision_score = self.isInvalidMJ()
                 if collision_score != 0:
