@@ -40,29 +40,28 @@ class CIP(object):
                             }
 
         print(self.__class__.__name__)
-        self.task_mean = self.calculate_task_vector()
         self.p_constant = p_constant
         self.m_constant = m_constant
         self.ttt_constant = ttt_constant
         self.manip_strategy = manip_strategy
         self.manipulability_flip = manipulability_flip
-        print('P_constant')
-        print(self.p_constant)
-        print('M_constant')
-        print(self.m_constant)
-        print('ttt_constant')
-        print(self.ttt_constant)
-        print('Manipulation strategy')
-        print(self.manip_strategy)
+        # print('P_constant')
+        # print(self.p_constant)
+        # print('M_constant')
+        # print(self.m_constant)
+        # print('ttt_constant')
+        # print(self.ttt_constant)
+        # print('Manipulation strategy')
+        # print(self.manip_strategy)
 
         self.demo_data_list, self.grasp_data_list = self.get_task_demos_and_grasps()
-        print('len_grasp_data_list')
-        print(len(self.grasp_data_list))
-        stacked_arrays = np.stack(self.grasp_data_list)
-        reshaped_array = stacked_arrays.reshape(len(self.grasp_data_list), -1)
-        unique_rows, indices = np.unique(reshaped_array, axis = 0, return_index = True)
-        print("unique_rows")
-        print(unique_rows.shape[0])
+        # print('len_grasp_data_list')
+        # print(len(self.grasp_data_list))
+        # stacked_arrays = np.stack(self.grasp_data_list)
+        # reshaped_array = stacked_arrays.reshape(len(self.grasp_data_list), -1)
+        # unique_rows, indices = np.unique(reshaped_array, axis = 0, return_index = True)
+        # print("unique_rows")
+        # print(unique_rows.shape[0])
 
 
     def get_task_demos_and_grasps(self):
@@ -99,34 +98,56 @@ class CIP(object):
         folder_len = len(demo_files)
         #demo_file = demo_files[np.random.randint(folder_len-1)]
         outer_loop_actions = []
+        outer_loop_rotations = []
         for demo_file in demo_files:
             full_demo_path  = demos_path + "/" + demo_file
             demo_data = pickle.load(open(full_demo_path,"rb"), encoding='latin1')
-
-            s0, a, r, done_p, sp = demo_data[0]
             
             actions = []
+            running_rotation = np.identity(3)
+            quats = []
 
             for i, transition_tuple in enumerate(demo_data):
+
                 s, a, r, done_p, sp = transition_tuple
-                #breakpoint()
-                a = a[6:12]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
-                mag = np.sqrt(a.dot(a))
-                actions.append(a/mag)
+                act = self.robots[0].controller.scale_action(a[6:12])
+                #Translation
+                c_a = act[0:3]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
+                mag = np.sqrt(c_a.dot(c_a))
+                actions.append(c_a/mag)
+
+
+                #Rotation
+                r_a = act[3:6]
+                quat_a = T.axisangle2quat(r_a)
+                quats.append(T.convert_quat(quat_a, to="wxyz"))
+                rotation_mat_a = T.quat2mat(quat_a)
+                running_rotation = np.dot(rotation_mat_a, running_rotation)
+
             actions = np.array(actions)
             action_mean = np.mean(actions, axis = 0)
             action_mean /= np.sqrt(action_mean.dot(action_mean))
-            # print('action_mean')
-            # print(action_mean)
+
+            av_quat = T.mat2quat(running_rotation)
+            av_quat_w = T.convert_quat(av_quat, to="wxyz") ##Normally this
+            av_orientation_test = T.average_quaternions(np.array(quats))
+
             outer_loop_actions.append(action_mean)
+            outer_loop_rotations.append(av_orientation_test)
+
         outer_loop_actions = np.array(outer_loop_actions)
         outer_action_mean = np.mean(outer_loop_actions, axis = 0)
         outer_action_mean /= np.sqrt(outer_action_mean.dot(outer_action_mean))
-        # print('Outer action mean')
-        # print(outer_action_mean)
-        # print(np.sqrt(outer_action_mean.dot(outer_action_mean)))
 
-        return outer_action_mean
+        outer_loop_rotations = np.array(outer_loop_rotations)
+        mean_quat_w = T.average_quaternions(outer_loop_rotations)
+        mean_quat = T.convert_quat(mean_quat_w, to="xyzw")
+
+        outer_av_orientation = T.quat2axisangle(mean_quat)
+
+        task_mean = np.concatenate((outer_action_mean, outer_av_orientation))
+
+        return task_mean
 
     def closest (self, num, arr):
         curr = arr[0]
@@ -157,84 +178,39 @@ class CIP(object):
 
     def calculate_demo_specific_task_vector(self,grasp_pose):
 
-        # print("Grasp_pose")
-        # print(grasp_pose)
-
-        # closest = self.grasp_data_list[0]
-        # indice = 0
-        # for zz in range(len(self.grasp_data_list)):
-        #     diff_new = self.grasp_data_list[zz] - grasp_pose
-        #     # print('A')
-        #     # print(self.grasp_data_list[zz])
-        #     # print('B')
-        #     # print(grasp_pose)
-        #     # print('C')
-        #     # print(diff_new)
-        #     diff_old = closest - grasp_pose
-        #     new_dist = LA.norm(diff_new, 'fro')
-        #     old_dist = LA.norm(diff_old, 'fro')
-        #     if new_dist < old_dist:
-        #         closest = self.grasp_data_list[zz]
-        #         indice = zz
-
-        # # print("Grasp_pose")
-        # # print(grasp_pose)
-        # # print('Closest')
-        # # print(self.grasp_data_list[indice])
-        # closest_trajectory = self.demo_data_list[indice]
-
         closest_grasp, closest_trajectory = self.find_closest_grasp_traj(grasp_pose)
 
         actions = []
-        actions2 = []
+        running_rotation = np.identity(3)
+        quats = []
 
         for i, transition_tuple in enumerate(closest_trajectory):
             s, a, r, done_p, sp = transition_tuple
-            a = a[6:12]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
-            actions2.append(a)
-            mag = np.sqrt(a.dot(a))
-            actions.append(a/mag)
+            act = self.robots[0].controller.scale_action(a[6:12])
+            #Translation
+            c_a = act[0:3]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
+            mag = np.sqrt(c_a.dot(c_a))
+            actions.append(c_a/mag)
+
+            #Rotation
+            r_a = act[3:6]
+            quat_a = T.axisangle2quat(r_a)
+            quats.append(T.convert_quat(quat_a, to="wxyz"))
+            rotation_mat_a = T.quat2mat(quat_a)
+            running_rotation = np.dot(rotation_mat_a, running_rotation)
+
+
         actions = np.array(actions)
-        action_mean = np.mean(actions, axis = 0)
-        action_mean /= np.sqrt(action_mean.dot(action_mean))
+        c_action_mean = np.mean(actions, axis = 0)
+        c_action_mean /= np.sqrt(c_action_mean.dot(c_action_mean))
 
-        #print(self.grasp_data_list)
 
-        #breakpoint()
-        #     demo_file = demo_files[zz]
-        #     full_demo_path  = demos_path + "/" + demo_file
-        #     demo_data = pickle.load(open(full_demo_path,"rb"), encoding='latin1')
-        #     s0, a, r, done_p, sp = demo_data[0]
+        av_quat = T.mat2quat(running_rotation)
+        av_orientation = T.quat2axisangle(av_quat)
+        av_orientation_test = T.convert_quat(T.average_quaternions(np.array(quats)), to="xyzw")
 
-        #     actions = []
-        #     actions2 = []
-        #     start_positions.append(s0[:7])
+        action_mean = np.concatenate((c_action_mean, av_orientation))
 
-        #     for i, transition_tuple in enumerate(demo_data):
-        #         s, a, r, done_p, sp = transition_tuple
-        #         a = a[0:6]#np.pad(a, (0, 3), 'constant', constant_values=(0, 0))
-        #         actions2.append(a)
-        #         mag = np.sqrt(a.dot(a))
-        #         actions.append(a/mag)
-        #     actions = np.array(actions)
-        #     action_mean = np.mean(actions, axis = 0)
-        #     action_mean /= np.sqrt(action_mean.dot(action_mean))
-        #     #print('Len')
-        #     #print(len(actions2))
-        #     # print('action_mean')
-        #     # print(action_mean)
-        #     outer_loop_actions.append(action_mean)
-        # outer_loop_actions = np.array(outer_loop_actions)
-        # outer_action_mean = np.mean(outer_loop_actions, axis = 0)
-        # outer_action_mean /= np.sqrt(outer_action_mean.dot(outer_action_mean))
-
-        # closest_start = self.closest(grasp_pose, start_positions)
-
-        # # print('Outer action mean')
-        # # print(outer_action_mean)
-        # # print(np.sqrt(outer_action_mean.dot(outer_action_mean)))
-
-        # return np.array(actions2)
         return action_mean
 
 
@@ -360,14 +336,16 @@ class CIP(object):
 
                 else:
                     wp_sum = 0
+
                     self.robots[0].controller.qpos_hist.clear()
                     for i, transition_tuple in enumerate(closest_trajectory):
                         s, a, r, done_p, sp = transition_tuple
+                        act = self.robots[0].controller.scale_action(a[6:12])
                         if self.manip_strategy == 'ellipsoid':
-                            w,p,wp = self.check_manipulability_ellipsoid(np.array(a[6:12]))
+                            w,p,wp = self.check_manipulability_ellipsoid(np.array(act))
                             wp_sum += wp
                         elif self.manip_strategy == 'paper':
-                            w,p,wp = self.check_manipulability_paper(np.array(a[6:12]))
+                            w,p,wp = self.check_manipulability_paper(np.array(act))
                             wp_sum += wp
                         elif self.manip_strategy == 'old':
                             w,p,wp = self.check_manipulability_old()
@@ -376,7 +354,7 @@ class CIP(object):
                         
                         
                         self.step(a)
-                        #print(self.robots[0].controller.qpos_hist)
+                    #print(self.robots[0].controller.qpos_hist)
                         #self.sim.forward()
                         
 

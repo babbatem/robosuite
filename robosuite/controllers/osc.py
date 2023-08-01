@@ -493,7 +493,7 @@ class OperationalSpaceController(Controller):
 
             ####### EVERYHING IS FINE WRT POSE   #########
             else:
-
+                self.velunsafe = True
             ##### ENTERS HERE IF VELOCITY UNSAFE #####
                 if self.velunsafe:
                     self.torques = safe_null_velocity_torques
