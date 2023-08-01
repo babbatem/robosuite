@@ -413,7 +413,7 @@ class OperationalSpaceController(Controller):
 
             ##### VELOCITY ########
 
-            safe_null_velocity_torques = self.torque_compensation
+            safe_null_velocity_torques = copy.deepcopy(self.torque_compensation)
             for (qidx, qvel) in enumerate(self.sim.data.qvel[self.joint_index]):
 
                if qvel > 2 or qvel < -2:
@@ -439,7 +439,7 @@ class OperationalSpaceController(Controller):
 
             ##### SECOND THRESHOLD ######
 
-            safe_null_torques = self.torque_compensation
+            safe_null_torques = copy.deepcopy(self.torque_compensation)
 
             for (qidx, (q, q_limits)) in enumerate(
                 zip(self.sim.data.qpos[self.joint_index], self.sim.model.jnt_range[self.joint_index])
@@ -472,7 +472,7 @@ class OperationalSpaceController(Controller):
 
             ###### ENTERS HERE IF IT IS CONCERNING BUT NOT SO UNSAFE #######
             if self.unsafe:
-                self.null_goal = copy.copy(self.joint_pos)
+                self.null_goal = copy.deepcopy(self.joint_pos)
                 for qidx in self.unsafe_joints:
                     self.null_goal[qidx] = true_joint_mid[qidx]
                 null_torques = nullspace_torques(self.mass_matrix, nullspace_matrix, self.null_goal, self.joint_pos, self.joint_vel)
