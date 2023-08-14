@@ -51,7 +51,7 @@ class BasicBoxCIP(SingleArmEnv, CIP):
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
-        self.table_offset = (-0.6, -0.5, 0.5)
+        self.table_offset = (-0.6, -0.5, 0.8)
 
         # reward configuration
         self.reward_scale = reward_scale
@@ -173,6 +173,8 @@ class BasicBoxCIP(SingleArmEnv, CIP):
             name="Basic Box",
         )
 
+        reference_pos = (-0.6, -0.5, 0.5)
+
         # Create placement initializer
         if self.placement_initializer is not None:
             self.placement_initializer.reset()
@@ -187,7 +189,7 @@ class BasicBoxCIP(SingleArmEnv, CIP):
                 rotation_axis="z",
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
-                reference_pos=self.table_offset,
+                reference_pos=reference_pos,
             )
 
         # task includes arena, robot, and objects of interest
