@@ -133,7 +133,7 @@ class CIP(object):
             av_orientation_test = T.average_quaternions(np.array(quats))
 
             outer_loop_actions.append(action_mean)
-            outer_loop_rotations.append(av_orientation_test)
+            outer_loop_rotations.append(av_quat_w)
 
         outer_loop_actions = np.array(outer_loop_actions)
         outer_action_mean = np.mean(outer_loop_actions, axis = 0)
@@ -207,9 +207,9 @@ class CIP(object):
 
         av_quat = T.mat2quat(running_rotation)
         av_orientation = T.quat2axisangle(av_quat)
-        av_orientation_test = T.convert_quat(T.average_quaternions(np.array(quats)), to="xyzw")
+        av_orientation_test = T.quat2axisangle(T.convert_quat(T.average_quaternions(np.array(quats)), to="xyzw"))
 
-        action_mean = np.concatenate((c_action_mean, av_orientation))
+        action_mean = np.concatenate((c_action_mean, av_orientation_test))
 
         return action_mean
 
@@ -297,7 +297,6 @@ class CIP(object):
                 #self.render()
             return False 
 
-
         for qpos in candidate_qpos[:int(len(candidate_qpos)/2)]:
 
             if self.manipulability_flip == "followdemo":
@@ -336,36 +335,51 @@ class CIP(object):
 
                 else:
                     wp_sum = 0
-
                     self.robots[0].controller.qpos_hist.clear()
+                    self.robots[0].controller.ee_hist.clear()
                     for i, transition_tuple in enumerate(closest_trajectory):
                         s, a, r, done_p, sp = transition_tuple
                         act = self.robots[0].controller.scale_action(a[6:12])
+                        # if self.manip_strategy == 'ellipsoid':
+                        #     w,p,wp = self.check_manipulability_ellipsoid(np.array(act))
+                        #     wp_sum += wp
+                        # elif self.manip_strategy == 'paper':
+                        #     w,p,wp = self.check_manipulability_paper(np.array(act))
+                        #     wp_sum += wp
+                        # elif self.manip_strategy == 'old':
+                        #     w,p,wp = self.check_manipulability_old()
+                        #     wp_sum += wp
+                        self.step(a)
+
+                    self.sim.model.body_pos[23][2] = 2
+                    first_qpos = self.robots[0].controller.qpos_hist[0]
+                    old_eepos = self.robots[0].controller.ee_hist[0]
+                    self.sim.data.qpos[:7] = first_qpos
+                    self.sim.forward()
+                    for itter in range(1,len(self.robots[0].controller.qpos_hist)):
+
+                        self.sim.data.qpos[:7] = self.robots[0].controller.qpos_hist[itter]
+                        delta_eepose = self.robots[0].controller.ee_hist[itter] - old_eepos
+                        delta_ee_axis = np.concatenate((delta_eepose[:3], T.quat2axisangle(delta_eepose[3:])))
+                        self.sim.forward()
+
                         if self.manip_strategy == 'ellipsoid':
-                            w,p,wp = self.check_manipulability_ellipsoid(np.array(act))
+                            w,p,wp = self.check_manipulability_ellipsoid(np.array(delta_ee_axis))
                             wp_sum += wp
                         elif self.manip_strategy == 'paper':
-                            w,p,wp = self.check_manipulability_paper(np.array(act))
+                            w,p,wp = self.check_manipulability_paper(np.array(delta_ee_axis))
                             wp_sum += wp
                         elif self.manip_strategy == 'old':
                             w,p,wp = self.check_manipulability_old()
                             wp_sum += wp
-
+                        old_eepos = self.robots[0].controller.ee_hist[itter]
                         
-                        
-                        self.step(a)
-                    #print(self.robots[0].controller.qpos_hist)
-                        #self.sim.forward()
-                        
-
                     if wp_sum > best_manip:
                         best_manip = wp_sum 
                         best_qpos = qpos
                     self.reset()
-                    #self.sim.forward()
 
             else:
-
                 if self.checkJointPosition(qpos):
                     if verbose: 
                         print('joint limit')
