@@ -415,7 +415,75 @@ class MonkeyBoxOneObject(MujocoXMLObject):
         dic = super().important_sites
         dic.update({"handle": self.naming_prefix + "handle"})
         return dic
+    
+class MonkeyBoxTwoObject(MujocoXMLObject):
+    """
+    Slider box object (used in Slider Box)
 
+    Args:
+    """
+
+    def __init__(self, name): 
+        xml_path = "objects/slider_sw.xml"
+        #print(xml_path_completion(xml_path))
+        super().__init__(
+            xml_path_completion(xml_path), name=name, joints=None, obj_type="all", duplicate_collision_geoms=True
+        )
+        self.box_object = self.naming_prefix + "base"
+        self.top_link = self.naming_prefix + "top_link"
+        self.slider_link = self.naming_prefix + "slider_link"
+        self.top_joint = self.naming_prefix + "top_joint"
+        self.slider_joint = self.naming_prefix + "slider_joint"
+
+    @property
+    def important_sites(self):
+        """
+        Returns:
+            dict: In addition to any default sites for this object, also provides the following entries
+
+                :`'handle'`: Name of door handle location site
+        """
+        # Get dict from super call and add to it
+        dic = super().important_sites
+        dic.update({"top_handle": self.naming_prefix + "top_handle"})
+        dic.update({"slide_handle": self.naming_prefix + "slide_handle"})
+        return dic
+
+class MonkeyBoxThreeObject(MujocoXMLObject):
+    """
+    Lever box object (used in Lever Box)
+
+    Args:
+    """
+
+    def __init__(self, name): 
+        xml_path = "objects/lever_sw.xml"
+        #print(xml_path_completion(xml_path))
+        super().__init__(
+            xml_path_completion(xml_path), name=name, joints=None, obj_type="all", duplicate_collision_geoms=True
+        )
+        self.box_object = self.naming_prefix + "base"
+        self.top_link = self.naming_prefix + "top_link"
+        self.slider_link = self.naming_prefix + "slider_link"
+        self.lever_link = self.naming_prefix + "lever_link"
+        self.top_joint = self.naming_prefix + "top_joint"
+        self.slider_joint = self.naming_prefix + "slider_joint"
+        self.lever_joint = self.naming_prefix + "lever_joint"
+    
+    @property
+    def important_sites(self):
+        """
+        Returns:
+            dict: In addition to any default sites for this object, also provides the following entries
+
+                :`'handle'`: Name of door handle location site
+        """
+        # Get dict from super call and add to it
+        dic = super().important_sites
+        dic.update({"top_handle": self.naming_prefix + "top_handle"})
+        dic.update({"slide_handle": self.naming_prefix + "slide_handle"})
+        dic.update({"lever_handle": self.naming_prefix + "lever_handle"})
+        return dic
 
         
 

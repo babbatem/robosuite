@@ -4,7 +4,7 @@ import numpy as np
 
 from robosuite.environments.manipulation.single_arm_env import SingleArmEnv
 from robosuite.models.arenas import TableArena
-from robosuite.models.objects import MonkeyBoxOneObject
+from robosuite.models.objects import MonkeyBoxThreeObject
 from robosuite.models.tasks import ManipulationTask
 from robosuite.utils.observables import Observable, sensor
 from robosuite.utils.placement_samplers import UniformRandomSampler
@@ -14,7 +14,7 @@ from robosuite.environments.manipulation.cip_env import CIP
 import pickle
 import random
 
-class BasicBoxCIP(SingleArmEnv, CIP):
+class LeverBoxCIP(SingleArmEnv, CIP):
     """
     """
 
@@ -51,7 +51,7 @@ class BasicBoxCIP(SingleArmEnv, CIP):
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
-        self.table_offset = (-0.6, -0.5, 0.8)
+        self.table_offset = (-0.6, -0.5, 0.5)
 
         # reward configuration
         self.reward_scale = reward_scale
@@ -126,16 +126,29 @@ class BasicBoxCIP(SingleArmEnv, CIP):
         if self._check_success():
             reward = 1.0
 
-        # else, we consider only the case if we're using shaped rewards
+        # EXPERIMENTAL: reaching reward
         elif self.reward_shaping:
-            # Add reaching component
-            dist = np.linalg.norm(self._gripper_to_handle) # CAN'T DO THIS BECAUSE IT'S SPECIFIC TO DRAWER
-            reaching_reward = 0.25 * (1 - np.tanh(10.0 * dist))
-            reward += reaching_reward
-                
-            hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
-            reward += np.clip(0.25 * np.abs(hinge_qpos / (0.5 * np.pi)), -0.25, 0.25)
+            if self._check_success_subtask_1() and self._check_success_subtask_2():
+                # Add reaching component
+                reward = 0.45
+                dist = np.linalg.norm(self._gripper_to_top_handle)
+                reaching_reward = 0.15 * (1 - np.tanh(10.0 * dist))
+                reward += reaching_reward
+            elif self._check_success_subtask_2():
+                # Add reaching component if slide isn't complete but lever is complete
+                reward = 0.2
+                dist = np.linalg.norm(self._gripper_to_slide_handle)
+                reaching_reward = 0.15 * (1 - np.tanh(10.0 * dist))
+                reward += reaching_reward
+            else:
+                # Add reaching component if both slide and lever aren't complete
+                dist = np.linalg.norm(self._gripper_to_lever_handle)
+                reaching_reward = 0.15 * (1 - np.tanh(10.0 * dist))
+                reward += reaching_reward
 
+            hinge_qpos = self.sim.data.qpos[self.top_hinge_qpos_addr]
+            reward += np.clip(0.25 * np.abs(hinge_qpos / (0.5 * np.pi)), -0.25, 0.25)
+        
         # Scale reward if requested
         if self.reward_scale is not None:
             reward *= self.reward_scale / 1.0
@@ -169,11 +182,9 @@ class BasicBoxCIP(SingleArmEnv, CIP):
         )
 
         # initialize objects of interest
-        self.box = MonkeyBoxOneObject(
-            name="Basic Box",
+        self.box = MonkeyBoxThreeObject(
+            name="Lever Box",
         )
-
-        reference_pos = (-0.6, -0.5, 0.5)
 
         # Create placement initializer
         if self.placement_initializer is not None:
@@ -189,7 +200,7 @@ class BasicBoxCIP(SingleArmEnv, CIP):
                 rotation_axis="z",
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
-                reference_pos=reference_pos,
+                reference_pos=self.table_offset,
             )
 
         # task includes arena, robot, and objects of interest
@@ -209,17 +220,20 @@ class BasicBoxCIP(SingleArmEnv, CIP):
 
         # Additional object references from this env
         self.object_body_ids = dict()
-        # self.box_object = self.naming_prefix + "base"
-        # self.top_link = self.naming_prefix + "top_link"
-        # self.box_joint = self.naming_prefix + "joint_1"
-        # breakpoint()
+
         self.object_body_ids["base"] = self.sim.model.body_name2id(self.box.box_object)
         self.object_body_ids["top"] = self.sim.model.body_name2id(self.box.top_link)
-        # self.object_body_ids["joint"] = self.sim.model.body_name2id(self.box.box_joint)
-        self.box_handle_site_id = self.sim.model.site_name2id(self.box.important_sites["handle"])
-        self.hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[0])
-        # if self.use_latch:
-        #     self.handle_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[1])
+        self.object_body_ids["slider"] = self.sim.model.body_name2id(self.box.slider_link)
+        self.object_body_ids["lever"] = self.sim.model.body_name2id(self.box.lever_link)
+
+        self.box_top_handle_site_id = self.sim.model.site_name2id(self.box.important_sites["top_handle"])
+        self.box_slide_handle_site_id = self.sim.model.site_name2id(self.box.important_sites["slide_handle"])
+        self.box_lever_handle_site_id = self.sim.model.site_name2id(self.box.important_sites["lever_handle"])
+        
+        # DOUBLE CHECK
+        self.top_hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[0])
+        self.slide_hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[1])
+        self.lever_hinge_qpos_addr = self.sim.model.get_joint_qpos_addr(self.box.joints[2])
 
     def _setup_observables(self):
         """
@@ -242,8 +256,16 @@ class BasicBoxCIP(SingleArmEnv, CIP):
                 return np.array(self.sim.data.body_xpos[self.object_body_ids["top"]])
 
             @sensor(modality=modality)
-            def handle_pos(obs_cache):
-                return self._handle_xpos
+            def top_handle_pos(obs_cache):
+                return self._top_handle_xpos
+            
+            @sensor(modality=modality)
+            def slide_handle_pos(obs_cache):
+                return self._slide_handle_xpos
+            
+            @sensor(modality=modality)
+            def lever_handle_pos(obs_cache):
+                return self._lever_handle_xpos
 
             @sensor(modality=modality)
             def box_to_eef_pos(obs_cache): # What is obs_cache?
@@ -254,31 +276,46 @@ class BasicBoxCIP(SingleArmEnv, CIP):
                 )
 
             @sensor(modality=modality)
-            def handle_to_eef_pos(obs_cache):
+            def top_handle_to_eef_pos(obs_cache):
                 return (
-                    obs_cache["handle_pos"] - obs_cache[f"{pf}eef_pos"]
-                    if "handle_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                    obs_cache["top_handle_pos"] - obs_cache[f"{pf}eef_pos"]
+                    if "top_handle_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                    else np.zeros(3)
+                )
+            
+            @sensor(modality=modality)
+            def slide_handle_to_eef_pos(obs_cache):
+                return (
+                    obs_cache["slide_handle_pos"] - obs_cache[f"{pf}eef_pos"]
+                    if "slide_handle_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                    else np.zeros(3)
+                )
+            
+            @sensor(modality=modality)
+            def lever_handle_to_eef_pos(obs_cache):
+                return (
+                    obs_cache["lever_handle_pos"] - obs_cache[f"{pf}eef_pos"]
+                    if "lever_handle_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
                     else np.zeros(3)
                 )
 
             @sensor(modality=modality)
-            def hinge_qpos(obs_cache):
-                return np.array([self.sim.data.qpos[self.hinge_qpos_addr]])
+            def top_hinge_qpos(obs_cache):
+                return np.array([self.sim.data.qpos[self.top_hinge_qpos_addr]])
+            
+            @sensor(modality=modality)
+            def slide_hinge_qpos(obs_cache):
+                return np.array([self.sim.data.qpos[self.slide_hinge_qpos_addr]])
+            
+            @sensor(modality=modality)
+            def lever_hinge_qpos(obs_cache):
+                return np.array([self.sim.data.qpos[self.lever_hinge_qpos_addr]])
 
-            sensors = [box_pos, handle_pos, box_to_eef_pos, handle_to_eef_pos, hinge_qpos]
+            sensors = [box_pos, top_handle_pos, slide_handle_pos, lever_handle_pos, 
+                       box_to_eef_pos, top_handle_to_eef_pos, slide_handle_to_eef_pos, lever_handle_to_eef_pos, 
+                       top_hinge_qpos, slide_hinge_qpos, lever_hinge_qpos]
             names = [s.__name__ for s in sensors]
 
-            # Also append handle qpos if we're using a locked door version with rotatable handle
-            # if self.use_latch:
-
-            #     @sensor(modality=modality)
-            #     def handle_qpos(obs_cache):
-            #         return np.array([self.sim.data.qpos[self.handle_qpos_addr]])
-
-            #     sensors.append(handle_qpos)
-            #     names.append("handle_qpos")
-
-            # Create observables
             for name, s in zip(names, sensors):
                 observables[name] = Observable(
                     name=name,
@@ -293,6 +330,10 @@ class BasicBoxCIP(SingleArmEnv, CIP):
         Resets simulation internal configurations.
         """
         super()._reset_internal()
+
+        # RESET STIFFNESS VALUES
+        self.sim.model.jnt_stiffness[-3] = 1000
+        self.sim.model.jnt_stiffness[-2] = 1000
 
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
@@ -313,8 +354,30 @@ class BasicBoxCIP(SingleArmEnv, CIP):
         Returns:
             bool: True if door has been opened
         """
-        hinge_qpos = self.sim.data.qpos[self.hinge_qpos_addr]
+        hinge_qpos = self.sim.data.qpos[self.top_hinge_qpos_addr]
         return hinge_qpos > 1.0
+    
+    # NEW #1
+    def _check_success_subtask_1(self):
+        """
+        Check if door has been opened.
+
+        Returns:
+            bool: True if door has been opened
+        """
+        hinge_qpos = self.sim.data.qpos[self.slide_hinge_qpos_addr]
+        return hinge_qpos > 0.05 # how much do I set this?
+    
+    # NEW #2
+    def _check_success_subtask_2(self):
+        """
+        Check if door has been opened.
+
+        Returns:
+            bool: True if door has been opened
+        """
+        hinge_qpos = self.sim.data.qpos[self.lever_hinge_qpos_addr]
+        return hinge_qpos < -0.5 # how much do I set this?
 
     def visualize(self, vis_settings):
         """
@@ -335,25 +398,80 @@ class BasicBoxCIP(SingleArmEnv, CIP):
             )
 
     @property
-    def _handle_xpos(self):
+    def _top_handle_xpos(self):
         """
         Grabs the position of the door handle handle.
 
         Returns:
             np.array: Door handle (x,y,z)
         """
-        return self.sim.data.site_xpos[self.box_handle_site_id]
+        return self.sim.data.site_xpos[self.box_top_handle_site_id]
+    
+    @property
+    def _slide_handle_xpos(self):
+        """
+        Grabs the position of the door handle handle.
+
+        Returns:
+            np.array: Door handle (x,y,z)
+        """
+        return self.sim.data.site_xpos[self.box_slide_handle_site_id]
+    
+    @property
+    def _lever_handle_xpos(self):
+        """
+        Grabs the position of the door handle handle.
+
+        Returns:
+            np.array: Door handle (x,y,z)
+        """
+        return self.sim.data.site_xpos[self.box_lever_handle_site_id]
             
     @property
-    def _gripper_to_handle(self):
+    def _gripper_to_top_handle(self):
         """
         Calculates distance from the gripper to the door handle.
 
         Returns:
             np.array: (x,y,z) distance between handle and eef
         """
-        return self._handle_xpos - self._eef_xpos
+        return self._top_handle_xpos - self._eef_xpos
     
+    @property
+    def _gripper_to_slide_handle(self):
+        """
+        Calculates distance from the gripper to the door handle.
+
+        Returns:
+            np.array: (x,y,z) distance between handle and eef
+        """
+        return self._slide_handle_xpos - self._eef_xpos
+    
+    @property
+    def _gripper_to_lever_handle(self):
+        """
+        Calculates distance from the gripper to the door handle.
+
+        Returns:
+            np.array: (x,y,z) distance between handle and eef
+        """
+        return self._lever_handle_xpos - self._eef_xpos
+    
+    def _pre_action(self, action, policy_step):
+        super()._pre_action(action, policy_step)
+       
+        # CHANGE STIFFNESS VALUES
+
+        self.sim.model.jnt_stiffness[-3] = 1000
+        self.sim.model.jnt_stiffness[-2] = 1000
+
+        if self._check_success_subtask_1() and self._check_success_subtask_2():
+            self.sim.model.jnt_stiffness[-3] = 0
+            self.sim.model.jnt_stiffness[-2] = 0
+        elif self._check_success_subtask_2():
+            self.sim.model.jnt_stiffness[-2] = 0
+
+
     def _post_action(self, action):
         reward, done, info = super()._post_action(action)
 
