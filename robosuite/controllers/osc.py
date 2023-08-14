@@ -211,7 +211,7 @@ class OperationalSpaceController(Controller):
         self.torque_hist = [np.array([0, 0, 0, 0, 0, 0, 0])]
         self.vel_hist = []
         self.qpos_hist = []
-
+        self.ee_hist = []
 
     def set_goal(self, action, set_pos=None, set_ori=None):
         """
@@ -239,7 +239,6 @@ class OperationalSpaceController(Controller):
             self.kp = np.clip(kp, self.kp_min, self.kp_max)
             self.kd = 2 * np.sqrt(self.kp) * np.clip(damping_ratio, self.damping_ratio_min, self.damping_ratio_max)
         elif self.impedance_mode == "variable_kp":
-            #breakpoint()
             kp, delta = action[:6], action[6:]
             
             if self.scale_stiffness:
@@ -308,7 +307,6 @@ class OperationalSpaceController(Controller):
         self.update()
 
 
-        #breakpoint()
 
         desired_pos = None
         # Only linear interpolator is currently supported
@@ -385,6 +383,17 @@ class OperationalSpaceController(Controller):
         #print(null_torques_mid)
         if not self.safety_bool:
             self.torques += null_torques_initial
+            self.torque_hist.append(self.torques)
+            self.vel_hist.append(self.sim.data.qvel[self.joint_index])
+            self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
+            endeffector_pose = np.array(self.sim.data.site_xpos[self.sim.model.site_name2id(self.eef_name)])
+            endeffector_ori = T.mat2quat(np.array(
+                self.sim.data.site_xmat[self.sim.model.site_name2id(self.eef_name)].reshape([3, 3])
+            ))
+            full_eef_pose = np.concatenate((endeffector_pose,endeffector_ori))
+            self.ee_hist.append(full_eef_pose)
+            super().run_controller()
+            return self.torques
         else:
             self.unsafe = False
             self.unsafe2 = False
@@ -464,6 +473,12 @@ class OperationalSpaceController(Controller):
                 self.torque_hist.append(self.torques)
                 self.vel_hist.append(self.sim.data.qvel[self.joint_index])
                 self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
+                endeffector_pose = np.array(self.sim.data.site_xpos[self.sim.model.site_name2id(self.eef_name)])
+                endeffector_ori = T.mat2quat(np.array(
+                    self.sim.data.site_xmat[self.sim.model.site_name2id(self.eef_name)].reshape([3, 3])
+                ))
+                full_eef_pose = np.concatenate((endeffector_pose,endeffector_ori))
+                self.ee_hist.append(full_eef_pose)
                 super().run_controller()
                 #print('===============AGRESSIVE SAFETY================')
                 return self.torques
@@ -487,6 +502,12 @@ class OperationalSpaceController(Controller):
                 self.torque_hist.append(self.torques)
                 self.vel_hist.append(self.sim.data.qvel[self.joint_index])
                 self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
+                endeffector_pose = np.array(self.sim.data.site_xpos[self.sim.model.site_name2id(self.eef_name)])
+                endeffector_ori = T.mat2quat(np.array(
+                    self.sim.data.site_xmat[self.sim.model.site_name2id(self.eef_name)].reshape([3, 3])
+                ))
+                full_eef_pose = np.concatenate((endeffector_pose,endeffector_ori))
+                self.ee_hist.append(full_eef_pose)
                 super().run_controller()
 
                 return self.torques
@@ -504,6 +525,12 @@ class OperationalSpaceController(Controller):
                     self.torque_hist.append(self.torques)
                     self.vel_hist.append(self.sim.data.qvel[self.joint_index])
                     self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
+                    endeffector_pose = np.array(self.sim.data.site_xpos[self.sim.model.site_name2id(self.eef_name)])
+                    endeffector_ori = T.mat2quat(np.array(
+                        self.sim.data.site_xmat[self.sim.model.site_name2id(self.eef_name)].reshape([3, 3])
+                    ))
+                    full_eef_pose = np.concatenate((endeffector_pose,endeffector_ori))
+                    self.ee_hist.append(full_eef_pose)
                     super().run_controller()
                     #print('===============AGRESSIVE SAFETY================')
                     return self.torques
@@ -518,6 +545,12 @@ class OperationalSpaceController(Controller):
                 self.torque_hist.append(self.torques)
                 self.vel_hist.append(self.sim.data.qvel[self.joint_index])
                 self.qpos_hist.append(self.sim.data.qpos[self.joint_index])
+                endeffector_pose = np.array(self.sim.data.site_xpos[self.sim.model.site_name2id(self.eef_name)])
+                endeffector_ori = T.mat2quat(np.array(
+                    self.sim.data.site_xmat[self.sim.model.site_name2id(self.eef_name)].reshape([3, 3])
+                ))
+                full_eef_pose = np.concatenate((endeffector_pose,endeffector_ori))
+                self.ee_hist.append(full_eef_pose)
                 super().run_controller()
 
                 return self.torques
