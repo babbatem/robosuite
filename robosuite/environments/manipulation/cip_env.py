@@ -297,7 +297,7 @@ class CIP(object):
                 #self.render()
             return False 
 
-        for qpos in candidate_qpos[:int(len(candidate_qpos)/2)]:
+        for qpos in candidate_qpos: #[:int(len(candidate_qpos)/2)]
 
             if self.manipulability_flip == "followdemo":
                 if self.checkJointPosition(qpos):
