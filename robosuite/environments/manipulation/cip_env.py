@@ -27,7 +27,7 @@ class CIP(object):
     enables functionality for resetting with grasping, safety, etc. 
     construct robosuite env as class EnvName(SingleArmEnv, CIP)
     """
-    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old', manipulability_flip = 'superaverage'):
+    def __init__(self, ik_pos_tol=1e-3, samples_per_pose=50, p_constant=1, m_constant=1, ttt_constant = 1, manip_strategy = 'old', manipulability_flip = 'superaverage', only_cartesian = False, action_mode = 'short_demo'):
         super(CIP, self).__init__()
         self.solver = None
         self.setGeomIDs()
@@ -45,6 +45,8 @@ class CIP(object):
         self.ttt_constant = ttt_constant
         self.manip_strategy = manip_strategy
         self.manipulability_flip = manipulability_flip
+        self.only_cartesian = only_cartesian
+        self.action_mode = action_mode
         # print('P_constant')
         # print(self.p_constant)
         # print('M_constant')
@@ -91,6 +93,7 @@ class CIP(object):
             grasp_data_list.append(grasp_data)
 
         return demo_data_list, grasp_data_list
+
 
     def calculate_task_vector(self):
         demos_path = "./auto_demos/" + str(self.__class__.__name__)
@@ -278,8 +281,7 @@ class CIP(object):
         best_manip = -np.inf
         best_qpos = None
         candidate_qpos, ee_target = self.solve_ik(grasp_pose)
-        print("manipulability_flip")
-        print(self.manipulability_flip)
+
         if self.manipulability_flip == "demoaverage":
             self.task_mean =  self.calculate_demo_specific_task_vector(grasp_pose_old)
             print("Self_task_mean_demoaverage")
@@ -289,7 +291,6 @@ class CIP(object):
             print("Self_task_mean_superaverage")
             print(self.task_mean)
         else:
-            assert self.manipulability_flip == "followdemo"
             closest_grasp, closest_trajectory = self.find_closest_grasp_traj(grasp_pose_old)
         if len(candidate_qpos) == 0: 
             if verbose: 
@@ -299,7 +300,7 @@ class CIP(object):
 
         for qpos in candidate_qpos: #[:int(len(candidate_qpos)/2)]
 
-            if self.manipulability_flip == "followdemo":
+            if self.manipulability_flip == "followshortdemo" or self.manipulability_flip == "followlongdemo" or self.manipulability_flip == "followmodel":
                 if self.checkJointPosition(qpos):
                     if verbose: 
                         print('joint limit')
@@ -334,50 +335,74 @@ class CIP(object):
                     break
 
                 else:
-                    wp_sum = 0
-                    self.robots[0].controller.qpos_hist.clear()
-                    self.robots[0].controller.ee_hist.clear()
-                    for i, transition_tuple in enumerate(closest_trajectory):
-                        s, a, r, done_p, sp = transition_tuple
-                        act = self.robots[0].controller.scale_action(a[6:12])
-                        # if self.manip_strategy == 'ellipsoid':
-                        #     w,p,wp = self.check_manipulability_ellipsoid(np.array(act))
-                        #     wp_sum += wp
-                        # elif self.manip_strategy == 'paper':
-                        #     w,p,wp = self.check_manipulability_paper(np.array(act))
-                        #     wp_sum += wp
-                        # elif self.manip_strategy == 'old':
-                        #     w,p,wp = self.check_manipulability_old()
-                        #     wp_sum += wp
-                        self.step(a)
+                    if self.manipulability_flip == "followshortdemo":
 
-                    self.sim.model.body_pos[23][2] = 2
-                    first_qpos = self.robots[0].controller.qpos_hist[0]
-                    old_eepos = self.robots[0].controller.ee_hist[0]
-                    self.sim.data.qpos[:7] = first_qpos
-                    self.sim.forward()
-                    for itter in range(1,len(self.robots[0].controller.qpos_hist)):
+                        wp_sum = 0
+                        self.robots[0].controller.qpos_hist.clear()
+                        self.robots[0].controller.ee_hist.clear()
+                        for i, transition_tuple in enumerate(closest_trajectory):
+                            s, a, r, done_p, sp = transition_tuple
+                            act = self.robots[0].controller.scale_action(a[6:12])
+                            if self.manip_strategy == 'ellipsoid':
+                                w,p,wp = self.check_manipulability_ellipsoid(np.array(act))
+                                wp_sum += wp
+                            elif self.manip_strategy == 'paper':
+                                w,p,wp = self.check_manipulability_paper(np.array(act))
+                                wp_sum += wp
+                            elif self.manip_strategy == 'old':
+                                w,p,wp = self.check_manipulability_old()
+                                wp_sum += wp
+                            self.step(a)
 
-                        self.sim.data.qpos[:7] = self.robots[0].controller.qpos_hist[itter]
-                        delta_eepose = self.robots[0].controller.ee_hist[itter] - old_eepos
-                        delta_ee_axis = np.concatenate((delta_eepose[:3], T.quat2axisangle(delta_eepose[3:])))
+                        if wp_sum > best_manip:
+                            best_manip = wp_sum 
+                            best_qpos = qpos
+                        self.reset()
+
+                    elif self.manipulability_flip == "followlongdemo":
+
+                        wp_sum = 0
+                        self.robots[0].controller.qpos_hist.clear()
+                        self.robots[0].controller.ee_hist.clear()
+                        for i, transition_tuple in enumerate(closest_trajectory):
+                            s, a, r, done_p, sp = transition_tuple
+                            act = self.robots[0].controller.scale_action(a[6:12])
+                            self.step(a)
+
+                        self.sim.model.body_pos[23][2] = 2
+                        first_qpos = self.robots[0].controller.qpos_hist[0]
+                        old_eepos = self.robots[0].controller.ee_hist[0]
+                        self.sim.data.qpos[:7] = first_qpos
                         self.sim.forward()
+                        for itter in range(1,len(self.robots[0].controller.qpos_hist)):
 
-                        if self.manip_strategy == 'ellipsoid':
-                            w,p,wp = self.check_manipulability_ellipsoid(np.array(delta_ee_axis))
-                            wp_sum += wp
-                        elif self.manip_strategy == 'paper':
-                            w,p,wp = self.check_manipulability_paper(np.array(delta_ee_axis))
-                            wp_sum += wp
-                        elif self.manip_strategy == 'old':
-                            w,p,wp = self.check_manipulability_old()
-                            wp_sum += wp
-                        old_eepos = self.robots[0].controller.ee_hist[itter]
-                        
-                    if wp_sum > best_manip:
-                        best_manip = wp_sum 
-                        best_qpos = qpos
-                    self.reset()
+                            self.sim.data.qpos[:7] = self.robots[0].controller.qpos_hist[itter]
+                            delta_eepose = self.robots[0].controller.ee_hist[itter] - old_eepos
+                            delta_ee_axis = np.concatenate((delta_eepose[:3], T.quat2axisangle(delta_eepose[3:])))
+                            self.sim.forward()
+
+                            if self.manip_strategy == 'ellipsoid':
+                                w,p,wp = self.check_manipulability_ellipsoid(np.array(delta_ee_axis))
+                                wp_sum += wp
+                            elif self.manip_strategy == 'paper':
+                                w,p,wp = self.check_manipulability_paper(np.array(delta_ee_axis))
+                                wp_sum += wp
+                            elif self.manip_strategy == 'old':
+                                w,p,wp = self.check_manipulability_old()
+                                wp_sum += wp
+                            old_eepos = self.robots[0].controller.ee_hist[itter]
+                            
+                        if wp_sum > best_manip:
+                            best_manip = wp_sum 
+                            best_qpos = qpos
+                        self.reset()
+
+                    else:
+                        assert self.manipulability_flip == "followmodel"
+                        a = np.zeros(self.action_spec[0].shape)
+                        a[-1] = 1
+                        #obs, reward, done, info = self.step(a)
+                        #breakpoint()
 
             else:
                 if self.checkJointPosition(qpos):
@@ -521,6 +546,16 @@ class CIP(object):
         invJJt = np.linalg.inv(JJt)
         ttt = 1 / np.dot(np.dot(task_action[None], invJJt), task_action[None].transpose())[0][0]
         ttt = np.sqrt(ttt)
+
+        ########### CARTESIAN ###########
+
+        if self.only_cartesian:
+            task_action = task_action[:3]
+            JpJpt = np.matmul(Jp,Jp.transpose())
+            invJpJpt = np.linalg.inv(JpJpt)
+            ttt = 1 / np.dot(np.dot(task_action[None], invJpJpt), task_action[None].transpose())[0][0]
+            ttt = np.sqrt(ttt)     
+
         ### Penalization for distance to joint limits
         p = 1
 
@@ -554,11 +589,14 @@ class CIP(object):
         #### new
  
         ttt = np.dot(J.transpose(), task_action[None].transpose())[:,0]
-
         ttt = np.sqrt(ttt.dot(ttt))
         
         #### new
 
+        if self.only_cartesian:
+            task_action = task_action[:3]
+            ttt = np.dot(Jp.transpose(), task_action[None].transpose())[:,0]
+            ttt = np.sqrt(ttt.dot(ttt))
 
         ### Penalization for distance to joint limits
         p = 1

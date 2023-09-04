@@ -131,7 +131,9 @@ class LeverCIP(SingleArmEnv, CIP):
         m_constant=1, 
         ttt_constant = 1, 
         manip_strategy = 'old',
-        manipulability_flip = 'superaverage'
+        manipulability_flip = 'superaverage',
+        only_cartesian = False,
+        action_mode = 'short_demo',
     ):
         # settings for table top (hardcoded since it's not an essential part of the environment)
         self.table_full_size = (0.8, 0.3, 0.05)
@@ -181,7 +183,9 @@ class LeverCIP(SingleArmEnv, CIP):
                      m_constant=m_constant, 
                      ttt_constant = ttt_constant, 
                      manip_strategy = manip_strategy,
-                     manipulability_flip = manipulability_flip)
+                     manipulability_flip = manipulability_flip,
+                     only_cartesian = only_cartesian,
+                     action_mode = action_mode)
 
     def reward(self, action=None):
         """

@@ -49,7 +49,9 @@ class DoorCIP(Door, CIP):
                  m_constant=1, 
                  ttt_constant = 1, 
                  manip_strategy = 'old',
-                 manipulability_flip = 'superaverage'
+                 manipulability_flip = 'superaverage',
+                 only_cartesian = False,
+                 action_mode = 'short_demo',
     ):
 
         self.ee_fixed_to_handle = ee_fixed_to_handle
@@ -90,7 +92,9 @@ class DoorCIP(Door, CIP):
                      m_constant=m_constant, 
                      ttt_constant = ttt_constant, 
                      manip_strategy = manip_strategy,
-                     manipulability_flip = manipulability_flip)
+                     manipulability_flip = manipulability_flip,
+                     only_cartesian = only_cartesian,
+                     action_mode = action_mode)
 
     def _reset_internal(self):
         super()._reset_internal()
