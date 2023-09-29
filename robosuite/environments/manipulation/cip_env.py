@@ -212,7 +212,7 @@ class CIP(object):
         av_orientation = T.quat2axisangle(av_quat)
         av_orientation_test = T.quat2axisangle(T.convert_quat(T.average_quaternions(np.array(quats)), to="xyzw"))
 
-        action_mean = np.concatenate((c_action_mean, av_orientation_test))
+        action_mean = np.concatenate((c_action_mean, av_orientation))
 
         return action_mean
 
