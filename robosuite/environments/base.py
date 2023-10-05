@@ -151,6 +151,9 @@ class MujocoEnv(metaclass=EnvMeta):
         # check if viewer has get observations method and set a flag for future use.
         self.viewer_get_obs = hasattr(self.viewer, "_get_observations")
 
+        # assume onscreen render
+        self.render_mode = 'human'
+
     def initialize_renderer(self):
         self.renderer = self.renderer.lower()
 
@@ -443,11 +446,25 @@ class MujocoEnv(metaclass=EnvMeta):
         """
         raise NotImplementedError
 
-    def render(self):
+    def set_render_mode(self, mode):
+        self.render_mode = mode
+
+    def render(self, width=500, height=500, camera_id=0, camera_name=None):
         """
         Renders to an on-screen window.
         """
-        self.viewer.render()
+        if self.render_mode == 'rgb_array':
+            self.sim._render_context_offscreen.render(width, height, camera_id=camera_id)
+            data = self.sim._render_context_offscreen.read_pixels(width, height, depth=False)
+            
+            # original image is upside-down, so flip it
+            data = data[::-1, :, :]
+        
+        else:
+            self.viewer.render()
+            data = None
+
+        return data
 
     def get_pixel_obs(self):
         """
