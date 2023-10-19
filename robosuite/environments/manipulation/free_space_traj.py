@@ -11,6 +11,7 @@ from robosuite.utils.observables import Observable, sensor
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.utils.transform_utils import convert_quat
 
+
 # /* Default values for free_space_traj task config parameters */
 # https://github.com/ARISE-Initiative/robosuite/blob/vices_iros19/robosuite/scripts/config/FreeSpaceTraj_task_config.hjson
 
@@ -36,8 +37,8 @@ DEFAULT_FREESPACE_CONFIG = {
     "reward_scale": 1.0,
     "timestep_penalty": 0.0,
     "use_debug_cube": False,
-    "use_debug_point": False,
-    "use_debug_square": True,
+    "use_debug_point": True,
+    "use_debug_square": False,
     "use_delta_distance_reward": False,
     "via_point_reward": 100.0
 }
@@ -333,7 +334,7 @@ class FreeSpaceTraj(SingleArmEnv):
             return pos
 
         if self.use_debug_point:
-            self.via_points = [np.array((0.5, 0.15, 1.4))]
+            self.via_points = [np.array((0.5, -0.15, 1.4))]
             self.num_via_points = 1
         elif self.use_debug_square:
             box_1 = np.array((0.5, -0.15, 1.4))
