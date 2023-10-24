@@ -19,7 +19,7 @@ from robosuite.utils.transform_utils import convert_quat
 DEFAULT_FREESPACE_CONFIG = {
     "acc_vp_reward_mult": 0.0,
     "action_delta_penalty": 0.0,
-    "allow_early_end": False,
+    "allow_early_end": True,
     "data_logging": False,
     "dist_threshold": 0.05,
     "distance_penalty_weight": 1,
@@ -377,6 +377,23 @@ class FreeSpaceTraj(SingleArmEnv):
             final_via_points.append([1 if i < self.num_already_checked else 0, *point])
         self.via_points = np.array(final_via_points)
 
+    def _reset_colors(self):
+        """
+        Resets colors of via_points in case of soft reset (i.e. _load_model not called again)
+        """
+        for i in range(len(self.via_points)):
+
+            # pick a color
+            color = None
+            if i < self.num_already_checked:
+                color = mjcf_utils.GREEN
+            elif i == self.num_already_checked:
+                color = mjcf_utils.RED
+            else:
+                color = mjcf_utils.BLUE
+
+            self.sim.model.site_rgba[i] = color
+
     def _load_model(self):
         """
         Loads an xml model, puts it in self.model
@@ -470,6 +487,7 @@ class FreeSpaceTraj(SingleArmEnv):
         self.next_idx = self.num_already_checked
         self.timestep = 0
         self.finished_time = None
+        self._reset_colors()
 
     def _check_success(self):
         """
